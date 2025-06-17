@@ -1,0 +1,9 @@
+packages:
+  - apps/**
+  - packages/**
+  - playground
+  - '!**/dist/**'
+
+onlyBuiltDependencies:
+  - esbuild
+  - unrs-resolver

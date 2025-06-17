@@ -1,0 +1,47 @@
+{
+  "name": "mahohue",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "packageManager": "pnpm@10.12.1",
+  "description": "Magical readability friendly hue preset for generated / dynamic themes to be used in UnoCSS and other CSS frameworks.",
+  "author": {
+    "name": "Project AIRI Team",
+    "email": "airi@moeru.ai",
+    "url": "https://github.com/proj-airi"
+  },
+  "scripts": {
+    "dev": "pnpm -F mahohue dev",
+    "build": "pnpm -r -F=\"./packages/*\" -F=\"./playground\" run build",
+    "build:packages": "pnpm -F=\"./packages/*\" run build",
+    "test": "vitest --coverage",
+    "test:run": "vitest run",
+    "lint": "eslint --cache .",
+    "lint:fix": "eslint --cache --fix .",
+    "typecheck": "pnpm -r -F=\"./packages/*\" -F=\"./playground\" run --parallel typecheck",
+    "up": "taze -w -r -I -f && pnpm prune && pnpm dedupe"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@antfu/eslint-config": "^4.14.1",
+    "@antfu/ni": "^25.0.0",
+    "@types/node": "^22.15.32",
+    "@unocss/eslint-config": "^66.2.1",
+    "@unocss/eslint-plugin": "^66.2.1",
+    "@unocss/preset-web-fonts": "^66.2.1",
+    "bumpp": "^10.2.0",
+    "eslint": "^9.29.0",
+    "taze": "^19.1.0",
+    "tsdown": "^0.12.8",
+    "tsx": "^4.20.3",
+    "typescript": "~5.8.3",
+    "unocss": "^66.2.1",
+    "unplugin-unused": "^0.5.1",
+    "vite": "^6.3.5",
+    "vite-plugin-inspect": "^11.2.0",
+    "vitest": "^3.2.3"
+  }
+}

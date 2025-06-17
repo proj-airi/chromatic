@@ -1,0 +1,44 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "target": "ESNext",
+    "lib": [
+      "ESNext"
+    ],
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "types": [
+      "vitest",
+      "vite/client"
+    ],
+
+    "allowJs": true,
+
+    /* Linting */
+    "strict": true,
+    "strictNullChecks": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noEmit": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true
+  },
+  "references": [
+    { "path": "./packages/shared/tsconfig.json" }
+  ],
+  "files": [],
+  "include": [
+    "uno.config.ts",
+    "eslint.config.ts",
+    "scripts/**/*.ts"
+  ]
+}
