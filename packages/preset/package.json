@@ -1,0 +1,27 @@
+{
+  "name": "@proj-airi/preset-chromatic",
+  "type": "module",
+  "version": "0.0.1",
+  "packageManager": "pnpm@10.12.1",
+  "description": "",
+  "author": "",
+  "license": "ISC",
+  "keywords": [],
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsdown",
+    "lint": "eslint --cache .",
+    "lint:fix": "eslint --cache --fix ."
+  },
+  "devDependencies": {
+    "@unocss/core": "^66.2.3",
+    "@unocss/preset-mini": "^66.2.3",
+    "tsdown": "^0.12.8"
+  }
+}
