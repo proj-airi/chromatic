@@ -5,7 +5,7 @@ export default defineConfig({
   presets: [
     presetMini(),
     presetChromatic({
-      baseHue: 300,
+      baseHue: 350,
       colors: {
         zero: 0,
         thirty: 30,
@@ -20,7 +20,6 @@ export default defineConfig({
         threeHundred: 300,
         threeThirty: 330,
       },
-      bakeColors: false,
     }),
   ],
 })
