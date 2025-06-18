@@ -2,6 +2,11 @@ version: "0.2"
 ignorePaths: []
 dictionaryDefinitions: []
 dictionaries: []
-words: []
+words:
+  - airi
+  - chromatic
+  - oklch
+  - PREFLIGHTS
+  - tsdown
 ignoreWords: []
 import: []

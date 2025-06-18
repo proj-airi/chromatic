@@ -33,12 +33,12 @@
     "skipLibCheck": true
   },
   "references": [
-    { "path": "./packages/shared/tsconfig.json" }
+    { "path": "./packages/preset/tsconfig.json" },
+    { "path": "./playground/tsconfig.json" }
   ],
   "files": [],
   "include": [
     "uno.config.ts",
-    "eslint.config.ts",
-    "scripts/**/*.ts"
+    "eslint.config.ts"
   ]
 }

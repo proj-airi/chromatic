@@ -1,4 +1,4 @@
-# `mahohue`
+# `chromatic`
 
 ### Development
 
