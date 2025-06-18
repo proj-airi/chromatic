@@ -1,11 +1,12 @@
 import { definePreset, LAYER_PREFLIGHTS } from '@unocss/core'
+import process from 'node:process'
 
 type Shade = 'DEFAULT' | 50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 | 950
 
 const VAR_HUE = '--chromatic-hue'
 
 const VAR_CHROMA_SHADES = {
-  DEFAULT: '--chromatic-chroma-50',
+  DEFAULT: '--chromatic-chroma',
   50: '--chromatic-chroma-50',
   100: '--chromatic-chroma-100',
   200: '--chromatic-chroma-200',
@@ -63,21 +64,23 @@ export interface PresetChromaticOptions {
 }
 
 export const presetChromatic = definePreset<PresetChromaticOptions>((options) => {
+  // Some tricks
+  const calledFromExtension = (process.env.VSCODE_ESM_ENTRYPOINT ?? '').includes('extensionHostProcess')
+
   return {
     name: 'preset-chromatic',
     ...options && {
       theme: {
         colors: Object.entries(options.colors).reduce((colors, [key, hueOffset]) => {
-          colors[key] = !options.bakeColors ? createVarBasedColorShades(hueOffset) : createBakedColorShades(options.baseHue, hueOffset)
+          colors[key] = (options.bakeColors || calledFromExtension) ? createBakedColorShades(options.baseHue, hueOffset) : createVarBasedColorShades(hueOffset)
           return colors
         }, {} as Record<string, Record<Shade, string>>),
       },
-      ...!options.bakeColors && {
-        preflights: [
-          {
-            layer: LAYER_PREFLIGHTS,
-            getCSS() {
-              return `
+      preflights: [
+        {
+          layer: LAYER_PREFLIGHTS,
+          getCSS() {
+            return `
 :root {
   ${VAR_HUE}: ${options.baseHue};
   ${VAR_CHROMA_SHADES.DEFAULT}: calc(0.18 + (cos(var(${VAR_HUE}) * 3.14159265 / 180) * 0.04));
@@ -94,10 +97,9 @@ export const presetChromatic = definePreset<PresetChromaticOptions>((options) =>
   ${VAR_CHROMA_SHADES[950]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.5);
 }
           `
-            },
           },
-        ],
-      },
+        },
+      ],
     },
   }
 })
