@@ -15,6 +15,7 @@
     "@proj-airi/unocss-preset-chromatic": "workspace:^",
     "@unocss/core": "^66.2.3",
     "@unocss/preset-mini": "^66.2.3",
+    "@unocss/reset": "^66.2.3",
     "@vitejs/plugin-vue": "^5.2.3",
     "@vue/tsconfig": "^0.7.0",
     "typescript": "~5.8.3",

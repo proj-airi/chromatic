@@ -68,9 +68,6 @@ importers:
       '@unocss/core':
         specifier: ^66.2.3
         version: 66.2.3
-      '@unocss/preset-mini':
-        specifier: ^66.2.3
-        version: 66.2.3
 
   playground:
     dependencies:
@@ -85,6 +82,9 @@ importers:
         specifier: ^66.2.3
         version: 66.2.3
       '@unocss/preset-mini':
+        specifier: ^66.2.3
+        version: 66.2.3
+      '@unocss/reset':
         specifier: ^66.2.3
         version: 66.2.3
       '@vitejs/plugin-vue':

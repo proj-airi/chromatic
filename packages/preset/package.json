@@ -46,7 +46,6 @@
     "build": "tsdown"
   },
   "devDependencies": {
-    "@unocss/core": "^66.2.3",
-    "@unocss/preset-mini": "^66.2.3"
+    "@unocss/core": "^66.2.3"
   }
 }

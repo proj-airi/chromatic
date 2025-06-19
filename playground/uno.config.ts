@@ -1,9 +1,18 @@
 import { presetChromatic } from '@proj-airi/unocss-preset-chromatic'
-import { defineConfig, presetMini } from 'unocss'
+import { defineConfig, presetMini, presetWebFonts, transformerDirectives, transformerVariantGroup } from 'unocss'
 
 export default defineConfig({
   presets: [
     presetMini(),
+    presetWebFonts({
+      fonts: {
+        sans: 'DM Sans',
+      },
+      timeouts: {
+        warning: 5000,
+        failure: 10000,
+      },
+    }),
     presetChromatic({
       baseHue: 350,
       colors: {
@@ -21,5 +30,11 @@ export default defineConfig({
         threeThirty: 330,
       },
     }),
+  ],
+  transformers: [
+    transformerDirectives({
+      applyVariable: ['--at-apply'],
+    }),
+    transformerVariantGroup(),
   ],
 })

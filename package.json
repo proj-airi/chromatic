@@ -6,7 +6,7 @@
   "packageManager": "pnpm@10.12.1",
   "scripts": {
     "postinstall": "pnpm run build:packages",
-    "dev": "pnpm -F chromatic dev",
+    "dev": "pnpm -F @proj-airi/chromatic-playground dev",
     "build": "pnpm -r -F=\"./packages/*\" -F=\"./playground\" run build",
     "build:packages": "pnpm -F=\"./packages/*\" run build",
     "test": "vitest --coverage",
