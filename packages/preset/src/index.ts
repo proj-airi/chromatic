@@ -3,7 +3,7 @@ import { env } from 'node:process'
 
 type Shade = 'DEFAULT' | 50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 | 950
 
-const VAR_HUE = '--chromatic-hue'
+export const VAR_HUE = '--chromatic-hue'
 
 const VAR_CHROMA_SHADES = {
   DEFAULT: '--chromatic-chroma',
