@@ -1,5 +1,5 @@
 {
-  "name": "playground",
+  "name": "@proj-airi/chromatic-playground",
   "type": "module",
   "version": "0.0.0",
   "private": true,
@@ -12,7 +12,7 @@
     "vue": "^3.5.13"
   },
   "devDependencies": {
-    "@proj-airi/preset-chromatic": "workspace:^",
+    "@proj-airi/unocss-preset-chromatic": "workspace:^",
     "@unocss/core": "^66.2.3",
     "@unocss/preset-mini": "^66.2.3",
     "@vitejs/plugin-vue": "^5.2.3",

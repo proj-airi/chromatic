@@ -1,5 +1,5 @@
 {
-  "name": "chromatic",
+  "name": "@proj-airi/chromatic-root",
   "type": "module",
   "version": "0.0.1",
   "private": true,
@@ -11,6 +11,7 @@
     "url": "https://github.com/proj-airi"
   },
   "scripts": {
+    "postinstall": "pnpm run build:packages",
     "dev": "pnpm -F chromatic dev",
     "build": "pnpm -r -F=\"./packages/*\" -F=\"./playground\" run build",
     "build:packages": "pnpm -F=\"./packages/*\" run build",

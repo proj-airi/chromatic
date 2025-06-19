@@ -1,5 +1,5 @@
 import { definePreset, LAYER_PREFLIGHTS } from '@unocss/core'
-import process from 'node:process'
+import { env } from 'node:process'
 
 type Shade = 'DEFAULT' | 50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 | 950
 
@@ -65,16 +65,21 @@ export interface PresetChromaticOptions {
 
 export const presetChromatic = definePreset<PresetChromaticOptions>((options) => {
   // Some tricks
-  const calledFromExtension = (process.env.VSCODE_ESM_ENTRYPOINT ?? '').includes('extensionHostProcess')
+  const calledFromExtension = (env.VSCODE_ESM_ENTRYPOINT ?? '').includes('extensionHostProcess')
 
   return {
     name: 'preset-chromatic',
     ...options && {
       theme: {
-        colors: Object.entries(options.colors).reduce((colors, [key, hueOffset]) => {
-          colors[key] = (options.bakeColors || calledFromExtension) ? createBakedColorShades(options.baseHue, hueOffset) : createVarBasedColorShades(hueOffset)
-          return colors
-        }, {} as Record<string, Record<Shade, string>>),
+        colors: Object
+          .entries(options.colors)
+          .reduce((colors, [key, hueOffset]) => {
+            colors[key] = (options.bakeColors || calledFromExtension)
+              ? createBakedColorShades(options.baseHue, hueOffset)
+              : createVarBasedColorShades(hueOffset)
+
+            return colors
+          }, {} as Record<string, Record<Shade, string>>),
       },
       preflights: [
         {

@@ -4,9 +4,13 @@ dictionaryDefinitions: []
 dictionaries: []
 words:
   - airi
+  - bumpp
   - chromatic
   - oklch
   - PREFLIGHTS
+  - taze
   - tsdown
+  - unocss
+  - unplugin
 ignoreWords: []
 import: []

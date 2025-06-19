@@ -1,5 +1,5 @@
 {
-  "name": "@proj-airi/preset-chromatic",
+  "name": "@proj-airi/unocss-preset-chromatic",
   "type": "module",
   "version": "0.0.1",
   "packageManager": "pnpm@10.12.1",
@@ -15,13 +15,10 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsdown",
-    "lint": "eslint --cache .",
-    "lint:fix": "eslint --cache --fix ."
+    "build": "tsdown"
   },
   "devDependencies": {
     "@unocss/core": "^66.2.3",
-    "@unocss/preset-mini": "^66.2.3",
-    "tsdown": "^0.12.8"
+    "@unocss/preset-mini": "^66.2.3"
   }
 }
