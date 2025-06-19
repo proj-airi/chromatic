@@ -7,5 +7,5 @@ export default defineConfig({
   },
   dts: true,
   unused: true,
-  fixedExtension: true
+  fixedExtension: true,
 })
