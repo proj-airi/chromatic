@@ -1,8 +1,10 @@
 import antfu from '@antfu/eslint-config'
+import unocss from '@unocss/eslint-config/flat'
+import { fileURLToPath } from 'node:url'
 
 export default await antfu(
   {
-    unocss: true,
+    unocss: false,
     vue: true,
     toml: false,
     ignores: [
@@ -36,6 +38,18 @@ export default await antfu(
     ],
     rules: {
       'jsonc/sort-keys': 'off',
+    },
+  },
+  // Thanks to
+  // https://github.com/unocss/unocss/issues/2603#issuecomment-2806940007
+  {
+    ...unocss,
+    files: ['playground/**/*'],
+    name: 'internal/unocss',
+    settings: {
+      unocss: {
+        configPath: fileURLToPath(new URL('./playground/uno.config.ts', import.meta.url)),
+      },
     },
   },
 )

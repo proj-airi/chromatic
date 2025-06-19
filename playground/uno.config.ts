@@ -1,4 +1,4 @@
-import { presetChromatic } from '@proj-airi/preset-chromatic'
+import { presetChromatic } from '@proj-airi/unocss-preset-chromatic'
 import { defineConfig, presetMini } from 'unocss'
 
 export default defineConfig({
