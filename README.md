@@ -2,6 +2,9 @@
 
 [[Try it](https://proj-airi-chromatic.netlify.app/)]
 
+🎨 Readability enhanced, clean, nice looking colors palette we used across our [Project AIRI](https://github.com/moeru-ai/airi) projects!
+You could think of it as a alternative of https://www.radix-ui.com/colors/custom
+
 > [!NOTE]
 >
 > This project is part of (and also associate to) the [Project AIRI](https://github.com/moeru-ai/airi), we aim to build a LLM-driven VTuber like [Neuro-sama](https://www.youtube.com/@Neurosama) (subscribe if you didn't!) if you are interested in, please do give it a try on [live demo](https://airi.moeru.ai).
@@ -11,9 +14,6 @@
 > Who are we?
 >
 > We are a group of currently non-funded talented people made up with computer scientists, experts in multi-modal fields, designers, product managers, and popular open source contributors who loves the goal of where we are heading now.
-
-🎨 Readability enhanced, clean, nice looking colors palette we used across our [Project AIRI](https://github.com/moeru-ai/airi) projects!
-You could think of it as a alternative of https://www.radix-ui.com/colors/custom
 
 ## Getting Started
 
