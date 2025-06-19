@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { VAR_HUE } from '@proj-airi/unocss-preset-chromatic'
-import { ref, onMounted, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
+
 import ColorHueRange from './components/ColorHueRange.vue'
 
 const DEFAULT_THEME_COLORS_HUE = 220.25
@@ -19,7 +20,7 @@ watch(themeColorsHue, () => {
 </script>
 
 <template>
-  <div class="font-sans p-4 mx-auto max-w-screen-xl">
+  <div class="mx-auto max-w-screen-xl p-4 font-sans">
     <div>
       <ColorHueRange
         v-model="themeColorsHue"
