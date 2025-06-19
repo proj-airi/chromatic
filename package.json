@@ -28,6 +28,7 @@
     "@unocss/eslint-plugin": "^66.2.1",
     "@unocss/preset-web-fonts": "^66.2.1",
     "bumpp": "^10.2.0",
+    "changelogithub": "^13.16.0",
     "eslint": "^9.29.0",
     "taze": "^19.1.0",
     "tsdown": "^0.12.8",
