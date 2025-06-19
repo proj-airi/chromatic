@@ -1,15 +1,9 @@
 {
   "name": "@proj-airi/chromatic-root",
   "type": "module",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "private": true,
   "packageManager": "pnpm@10.12.1",
-  "description": "Magical readability friendly hue preset for generated / dynamic themes to be used in UnoCSS and other CSS frameworks.",
-  "author": {
-    "name": "Project AIRI Team",
-    "email": "airi@moeru.ai",
-    "url": "https://github.com/proj-airi"
-  },
   "scripts": {
     "postinstall": "pnpm run build:packages",
     "dev": "pnpm -F chromatic dev",

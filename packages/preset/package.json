@@ -2,11 +2,35 @@
   "name": "@proj-airi/unocss-preset-chromatic",
   "type": "module",
   "version": "0.0.1",
-  "packageManager": "pnpm@10.12.1",
-  "description": "",
-  "author": "",
-  "license": "ISC",
-  "keywords": [],
+  "description": "Readability enhanced, clean, nice looking colors palette we used across our Project AIRI https://github.com/moeru-ai/airi projects!",
+  "author": {
+    "name": "Project AIRI Team",
+    "email": "airi@moeru.ai",
+    "url": "https://github.com/proj-airi"
+  },
+  "contributors": [
+    {
+      "name": "Makito",
+      "email": "i@maki.to",
+      "url": "https://github.com/sumimakito"
+    },
+    {
+      "name": "Lemon Neko",
+      "email": "chheese048@gmail.com",
+      "url": "https://github.com/LemonNekoGH"
+    },
+    {
+      "name": "junkwarrior87",
+      "email": "115852752+junkwarrior87@users.noreply.github.com",
+      "url": "https://github.com/junkwarrior87"
+    }
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/proj-airi/chromatic.git",
+    "directory": "packages/preset"
+  },
   "exports": {
     ".": "./dist/index.js",
     "./package.json": "./package.json"
