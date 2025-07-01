@@ -1,7 +1,7 @@
 {
   "name": "@proj-airi/unocss-preset-chromatic",
   "type": "module",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Readability enhanced, clean, nice looking colors palette we used across our Project AIRI https://github.com/moeru-ai/airi projects!",
   "author": {
     "name": "Project AIRI Team",
