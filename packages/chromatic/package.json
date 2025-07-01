@@ -1,5 +1,5 @@
 {
-  "name": "@proj-airi/unocss-preset-chromatic",
+  "name": "@proj-airi/chromatic",
   "type": "module",
   "version": "0.0.3",
   "description": "Readability enhanced, clean, nice looking colors palette we used across our Project AIRI https://github.com/moeru-ai/airi projects!",
@@ -8,38 +8,15 @@
     "email": "airi@moeru.ai",
     "url": "https://github.com/proj-airi"
   },
-  "contributors": [
-    {
-      "name": "Makito",
-      "email": "i@maki.to",
-      "url": "https://github.com/sumimakito"
-    },
-    {
-      "name": "Lemon Neko",
-      "email": "chheese048@gmail.com",
-      "url": "https://github.com/LemonNekoGH"
-    },
-    {
-      "name": "junkwarrior87",
-      "email": "115852752+junkwarrior87@users.noreply.github.com",
-      "url": "https://github.com/junkwarrior87"
-    },
-    {
-      "name": "Neko",
-      "email": "neko@ayaka.moe",
-      "url": "https://github.com/nekomeowww"
-    }
-  ],
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/proj-airi/chromatic.git",
-    "directory": "packages/preset"
+    "directory": "packages/chromatic"
   },
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
-      "node": "./dist/index.node.mjs",
       "default": "./dist/index.mjs"
     },
     "./package.json": "./package.json"
@@ -51,7 +28,11 @@
     "build": "tsdown",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "culori": "^4.0.2"
+  },
   "devDependencies": {
+    "@types/culori": "^4.0.0",
     "@unocss/core": "^66.2.3"
   }
 }
