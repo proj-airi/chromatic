@@ -14,19 +14,25 @@ export interface ShadeConfig {
 
 export type ShadeConfigMap = Record<Shade, ShadeConfig>
 
-export type ColorShades = Record<Shade, Color>
+export type ColorShades = Record<Shade, ChromaticColor>
+
+export interface ChromaticColor {
+  color: Color
+  toHex: () => string
+  toCSS: () => string
+}
 
 export interface ChromaticPalette {
   baseHue: number
   chroma: number
-  generateShade: (shade: Shade, hueOffset?: number) => Color
   getAllShades: (hueOffset?: number) => ColorShades
+  shadeBy: (shade: Shade) => ChromaticColor
 }
 
 export interface ColorScheme {
   // eslint-disable-next-line ts/no-unsafe-function-type
   [colorName: string]: ColorShades | Function
-  getColor: (colorName: string, shade?: Shade) => Color | undefined
+  getColor: (colorName: string, shade?: Shade) => ChromaticColor | undefined
   toCSS: (colorName: string, shade?: Shade) => string | undefined
   toHex: (colorName: string, shade?: Shade) => string | undefined
   adjustHue: (newBaseHue: number) => ColorScheme
@@ -42,6 +48,14 @@ export interface DynamicTheme {
     summer: () => ColorScheme
     autumn: () => ColorScheme
     winter: () => ColorScheme
+  }
+}
+
+function colorToChromaticColor(color: Color): ChromaticColor {
+  return {
+    color,
+    toHex: () => formatHex(color),
+    toCSS: () => formatCss(color),
   }
 }
 
@@ -62,7 +76,7 @@ export function chromaticPaletteFrom(baseHue = 200, baseChroma?: number): Chroma
     950: { lightness: 0.29, chromaMultiplier: 0.5 },
   }
 
-  const generateShade = (shade: Shade, hueOffset = 0): Color => {
+  const shadeBy = (shade: Shade, hueOffset = 0): ChromaticColor => {
     const config = shadeConfig[shade]
     const adjustedHue = (baseHue + hueOffset) % 360
     const adjustedChroma = chroma * config.chromaMultiplier
@@ -77,24 +91,25 @@ export function chromaticPaletteFrom(baseHue = 200, baseChroma?: number): Chroma
     // Mix with white for lighter shades if specified
     if (config.mixWithWhite) {
       const white = oklch({ mode: 'oklch', l: 1, c: 0, h: 0 })
-      return mixColors(baseColor, white, config.mixWithWhite)
+      return colorToChromaticColor(mixColors(baseColor, white, config.mixWithWhite))
     }
 
-    return baseColor
+    return colorToChromaticColor(baseColor)
   }
 
   return {
     baseHue,
     chroma,
-    generateShade,
     getAllShades: (hueOffset = 0): ColorShades => {
       const shades = {} as ColorShades
       for (const shadeKey of Object.keys(shadeConfig)) {
         const shade = Number.parseInt(shadeKey) as Shade
-        shades[shade] = generateShade(shade, hueOffset)
+        shades[shade] = shadeBy(shade, hueOffset)
       }
       return shades
     },
+
+    shadeBy,
   }
 }
 
@@ -136,15 +151,15 @@ export function themeFrom(baseHue = 200, colors: Record<string, number> = {}): C
 
   return {
     ...scheme,
-    getColor: (colorName: string, shade: Shade = 500): Color | undefined =>
+    getColor: (colorName: string, shade: Shade = 500): ChromaticColor | undefined =>
       scheme[colorName]?.[shade],
     toCSS: (colorName: string, shade: Shade = 500): string | undefined => {
       const color = scheme[colorName]?.[shade]
-      return color ? formatCss(color) : undefined
+      return color ? formatCss(color.color) : undefined
     },
     toHex: (colorName: string, shade: Shade = 500): string | undefined => {
       const color = scheme[colorName]?.[shade]
-      return color ? formatHex(color) : undefined
+      return color ? formatHex(color.color) : undefined
     },
     adjustHue: (newBaseHue: number): ColorScheme => themeFrom(newBaseHue, colors),
     addColor: (name: string, hueOffset: number): ColorScheme =>
@@ -162,16 +177,11 @@ export function chromaticFrom(baseHue = 200): DynamicTheme {
   }
 
   return {
-    // Get current scheme
     getScheme: (): ColorScheme => themeFrom(currentHue, currentColors),
-
-    // Update base hue
     setHue: (newHue: number): ColorScheme => {
       currentHue = newHue
       return themeFrom(currentHue, currentColors)
     },
-
-    // Animate hue changes
     animateHue: (targetHue: number, steps = 10, duration = 1000): Promise<ColorScheme> => {
       const startHue = currentHue
       const stepSize = (targetHue - startHue) / steps
