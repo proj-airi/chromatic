@@ -18,6 +18,7 @@ export type ColorShades = Record<Shade, ChromaticColor>
 
 export interface ChromaticColor {
   color: Color
+  withAlpha: (alpha: number) => ChromaticColor
   toHex: () => string
   toCSS: () => string
 }
@@ -54,6 +55,20 @@ export interface DynamicTheme {
 function colorToChromaticColor(color: Color): ChromaticColor {
   return {
     color,
+    withAlpha: (alpha: number): ChromaticColor => {
+      const rgba = oklch(color)
+      if (!rgba) {
+        throw new Error('Invalid color provided for alpha adjustment')
+      }
+
+      return colorToChromaticColor(oklch({
+        mode: 'oklch',
+        l: rgba.l,
+        c: rgba.c,
+        h: rgba.h,
+        alpha,
+      }))
+    },
     toHex: () => formatHex(color),
     toCSS: () => formatCss(color),
   }
@@ -76,7 +91,7 @@ export function chromaticPaletteFrom(baseHue = 200, baseChroma?: number): Chroma
     950: { lightness: 0.29, chromaMultiplier: 0.5 },
   }
 
-  const shadeBy = (shade: Shade, hueOffset = 0): ChromaticColor => {
+  const shadeBy = (shade: Shade, alpha?: number, hueOffset = 0): ChromaticColor => {
     const config = shadeConfig[shade]
     const adjustedHue = (baseHue + hueOffset) % 360
     const adjustedChroma = chroma * config.chromaMultiplier
@@ -86,11 +101,12 @@ export function chromaticPaletteFrom(baseHue = 200, baseChroma?: number): Chroma
       l: config.lightness,
       c: adjustedChroma,
       h: adjustedHue,
+      alpha: alpha ?? 1,
     })
 
     // Mix with white for lighter shades if specified
     if (config.mixWithWhite) {
-      const white = oklch({ mode: 'oklch', l: 1, c: 0, h: 0 })
+      const white = oklch({ mode: 'oklch', l: 1, c: 0, h: 0, alpha: alpha ?? 1 })
       return colorToChromaticColor(mixColors(baseColor, white, config.mixWithWhite))
     }
 
@@ -100,12 +116,13 @@ export function chromaticPaletteFrom(baseHue = 200, baseChroma?: number): Chroma
   return {
     baseHue,
     chroma,
-    getAllShades: (hueOffset = 0): ColorShades => {
+    getAllShades: (alpha?: number, hueOffset = 0): ColorShades => {
       const shades = {} as ColorShades
       for (const shadeKey of Object.keys(shadeConfig)) {
         const shade = Number.parseInt(shadeKey) as Shade
-        shades[shade] = shadeBy(shade, hueOffset)
+        shades[shade] = shadeBy(shade, alpha, hueOffset)
       }
+
       return shades
     },
 
