@@ -1,71 +1,33 @@
 <script setup lang="ts">
-import { VAR_HUE } from '@proj-airi/unocss-preset-chromatic'
-import { onMounted, ref, watch } from 'vue'
+import { useDark, useToggle } from '@vueuse/core'
 
-import ColorHueRange from './components/ColorHueRange.vue'
+import GettingStarted from './docs/getting-started.md'
 
-const DEFAULT_THEME_COLORS_HUE = 220.25
-const themeColorsHue = ref(DEFAULT_THEME_COLORS_HUE)
-
-onMounted(() => {
-  const hue = document.documentElement.style.getPropertyValue(VAR_HUE)
-  const hueF = Number.parseFloat(hue)
-  themeColorsHue.value = hueF >= 0 && hueF <= 360 ? hueF : DEFAULT_THEME_COLORS_HUE
-  document.documentElement.style.setProperty(VAR_HUE, themeColorsHue.value.toString())
-})
-
-watch(themeColorsHue, () => {
-  document.documentElement.style.setProperty(VAR_HUE, themeColorsHue.value.toString())
-})
+const isDark = useDark()
+const toggleDark = useToggle(isDark)
 </script>
 
 <template>
-  <div class="mx-auto max-w-screen-xl p-4 font-sans">
-    <div>
-      <ColorHueRange
-        v-model="themeColorsHue"
-        class="w-full"
-        :disabled="false"
-      />
-    </div>
-    <div>
-      <div class="flex gap-2">
-        <div class="text-zero">
-          0
+  <div>
+    <header sticky left-0 top-0 z-10 w-full px-4 pb-0 pt-2>
+      <div bg="neutral-200/50 dark:neutral-800/50" mx-auto max-w-screen-lg flex gap-2 rounded-xl p-4 backdrop-blur-md>
+        <h1 flex-1 text-2xl>
+          Chromatic Theme System
+        </h1>
+        <div flex flex-row items-center gap-2>
+          <button text-lg outline-none @click="() => toggleDark()">
+            <div v-if="isDark" i-solar:moon-stars-bold-duotone />
+            <div v-else i-solar:sun-bold />
+          </button>
+          <a href="https://github.com/proj-airi/chromatic" outline-none>
+            <div i-simple-icons:github />
+          </a>
         </div>
-        <div class="text-thirty">
-          30
-        </div>
-        <div class="text-sixty">
-          60
-        </div>
-        <div class="text-ninety">
-          90
-        </div>
-        <div class="text-hundred-twenty">
-          120
-        </div>
-        <div class="text-hundred-fifty">
-          150
-        </div>
-        <div class="text-hundred-eighty">
-          180
-        </div>
-        <div class="text-two-ten">
-          210
-        </div>
-        <div class="text-two-forty">
-          240
-        </div>
-        <div class="text-two-seventy">
-          270
-        </div>
-        <div class="text-three-hundred">
-          300
-        </div>
-        <div class="text-three-thirty">
-          330
-        </div>
+      </div>
+    </header>
+    <div mx-auto max-w-screen-lg flex flex-col gap-2 px-4 pb-4 pt-0>
+      <div>
+        <GettingStarted />
       </div>
     </div>
   </div>

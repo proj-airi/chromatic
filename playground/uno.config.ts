@@ -1,9 +1,11 @@
 import { presetChromatic } from '@proj-airi/unocss-preset-chromatic'
-import { defineConfig, presetMini, presetWebFonts, transformerDirectives, transformerVariantGroup } from 'unocss'
+import { defineConfig, presetAttributify, presetIcons, presetTypography, presetWebFonts, presetWind3, transformerDirectives, transformerVariantGroup } from 'unocss'
 
 export default defineConfig({
   presets: [
-    presetMini(),
+    presetWind3(),
+    presetAttributify(),
+    presetTypography(),
     presetWebFonts({
       fonts: {
         sans: 'DM Sans',
@@ -13,9 +15,12 @@ export default defineConfig({
         failure: 10000,
       },
     }),
+    presetIcons(),
     presetChromatic({
       baseHue: 350,
       colors: {
+        primary: 0,
+        complementary: 180, // to create a complementary color scheme
         zero: 0,
         thirty: 30,
         sixty: 60,
