@@ -10,7 +10,7 @@ const toggleDark = useToggle(isDark)
 <template>
   <div>
     <header sticky left-0 top-0 z-10 w-full px-4 pb-0 pt-2>
-      <div bg="neutral-200/50 dark:neutral-800/50" mx-auto max-w-screen-lg flex gap-2 rounded-xl p-4 backdrop-blur-md>
+      <div bg="neutral-100/80 dark:neutral-800/50" mx-auto max-w-screen-lg flex gap-2 rounded-xl p-4 backdrop-blur-md>
         <h1 flex-1 text-2xl>
           Chromatic Theme System
         </h1>
