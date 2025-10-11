@@ -32,7 +32,7 @@
     "culori": "^4.0.2"
   },
   "devDependencies": {
-    "@types/culori": "^4.0.0",
-    "@unocss/core": "^66.3.3"
+    "@types/culori": "^4.0.1",
+    "@unocss/core": "^66.5.3"
   }
 }
