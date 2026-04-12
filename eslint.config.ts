@@ -13,6 +13,7 @@ export default await antfu(
       'cspell.config.yml',
     ],
     rules: {
+      'vue/prefer-separate-static-class': 'off',
       'perfectionist/sort-imports': [
         'error',
         {

@@ -15,6 +15,34 @@ npm i -D @proj-airi/unocss-preset-chromatic
 
 Refer to [README.md](https://github.com/proj-airi/chromatic/blob/main/README.md) for more information.
 
+## Brightness and Saturation Modifiers
+
+Chromatic supports a combined suffix syntax for runtime color tuning:
+
+```txt
+<utility>-<color>-<shade>/<opacity>~<saturation>*<brightness>
+```
+
+- `/` opacity in percent (UnoCSS standard color opacity, e.g. `/50`)
+- `~` saturation/chroma in percent (`100` = unchanged)
+- `*` brightness in percent (`100` = unchanged)
+
+Examples:
+
+```html
+<div class="bg-primary-500/50~10*115" />
+<div class="hover:bg-primary-500/60~80*120" />
+<div class="text-primary-600~120" />
+<div class="border-primary-400*70" />
+```
+
+Notes:
+
+- Modifier order is strict: `/<opacity>~<saturation>*<brightness>`.
+- `*` and `~` are optional.
+- Supported color utilities default to `bg-*`, `text-*`, `border-*`, `ring-*`, `fill-*`, and `stroke-*`.
+- You can customize utility matching via `modifierUtilityPrefixes`.
+
 ## License
 
 MIT
