@@ -13,7 +13,8 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "types": [
-      "vitest"
+      "vitest",
+      "node"
     ],
     "allowJs": true,
 
