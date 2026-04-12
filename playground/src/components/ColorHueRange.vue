@@ -4,15 +4,15 @@ const props = defineProps<{
   class?: string
 }>()
 
-const colorValue = defineModel<string>('colorValue', {
-  type: String,
-  default: '',
+const colorValue = defineModel<number>('colorValue', {
+  type: Number,
+  default: 220.25,
 })
 </script>
 
 <template>
   <input
-    v-model="colorValue"
+    v-model.number="colorValue"
     type="range" min="0" max="360" step="0.01"
     class="color-hue-range"
     transition="all ease-in-out duration-250"

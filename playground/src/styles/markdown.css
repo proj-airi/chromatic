@@ -74,13 +74,13 @@
   }
 
   & a {
-    color: #ffffff;
+    color: rgb(72, 142, 255);
   }
 }
 
 .dark .markdown-body {
   & a {
-    color:rgb(72, 142, 255);
+    color: rgb(72, 142, 255);
   }
 }
 

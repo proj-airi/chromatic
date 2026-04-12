@@ -1,19 +1,16 @@
 import { presetChromatic } from '@proj-airi/unocss-preset-chromatic'
 import { defineConfig, presetAttributify, presetIcons, presetTypography, presetWebFonts, presetWind3, transformerDirectives, transformerVariantGroup } from 'unocss'
 
-export function safelistAllPrimaryBackgrounds(): string[] {
-  return [
-    ...[undefined, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map((shade) => {
-      const prefix = shade ? `bg-primary-${shade}` : `bg-primary`
-      return [
-        prefix,
-        ...[5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(opacity => `${prefix}/${opacity}`),
-      ]
-    }).flat(),
-  ]
-}
-
 export default defineConfig({
+  content: {
+    pipeline: {
+      // Needed so literal class catalogs imported from script blocks are scanned.
+      include: [
+        /\.(vue|md)($|\?)/,
+        /\.(ts|js|mts|cts)($|\?)/,
+      ],
+    },
+  },
   presets: [
     presetWind3(),
     presetAttributify(),
@@ -48,9 +45,6 @@ export default defineConfig({
         threeThirty: 330,
       },
     }),
-  ],
-  safelist: [
-    ...safelistAllPrimaryBackgrounds(),
   ],
   transformers: [
     transformerDirectives({

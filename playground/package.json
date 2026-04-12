@@ -9,6 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@proj-airi/chromatic": "workspace:^",
+    "culori": "^4.0.2",
+    "reka-ui": "^2.9.5",
+    "three": "^0.183.2",
     "vue": "^3.5.22"
   },
   "devDependencies": {
@@ -16,6 +20,8 @@
     "@iconify-json/solar": "^1.2.4",
     "@proj-airi/unocss-preset-chromatic": "workspace:^",
     "@shikijs/markdown-it": "^3.13.0",
+    "@types/culori": "^4.0.1",
+    "@types/three": "^0.183.1",
     "@unocss/core": "^66.5.3",
     "@unocss/preset-mini": "^66.5.3",
     "@unocss/reset": "^66.5.3",

@@ -2,6 +2,11 @@
   "extends": "@vue/tsconfig/tsconfig.dom.json",
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "paths": {
+      "@proj-airi/chromatic": [
+        "../packages/chromatic/src/index.ts"
+      ]
+    },
     "types": [
       "vite/client",
       "./shim.d.ts"
