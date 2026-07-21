@@ -1,3 +1,5 @@
+<!-- eslint-disable markdown/no-missing-link-fragments -->
+
 <script setup>
 import { VAR_HUE } from '@proj-airi/unocss-preset-chromatic'
 import { computed, onMounted, reactive, ref, watch } from 'vue'

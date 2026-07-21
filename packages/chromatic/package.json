@@ -29,10 +29,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "culori": "^4.0.2"
+    "culori": "catalog:"
   },
   "devDependencies": {
-    "@types/culori": "^4.0.1",
-    "@unocss/core": "^66.6.8"
+    "@types/culori": "catalog:",
+    "@unocss/core": "catalog:"
   }
 }

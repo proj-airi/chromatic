@@ -1,20 +1,92 @@
-import antfu from '@antfu/eslint-config'
-import unocss from '@unocss/eslint-config/flat'
 import { fileURLToPath } from 'node:url'
 
-export default await antfu(
-  {
-    unocss: false,
-    vue: true,
-    toml: false,
-    ignores: [
-      'dist/**',
-      'cspell.config.yaml',
-      'cspell.config.yml',
+import unocss from '@unocss/eslint-config/flat'
+
+import { defineConfig } from '@moeru/eslint-config'
+
+export default defineConfig({
+  masknet: false,
+  perfectionist: true,
+  preferArrow: false,
+  sonarjs: false,
+  sortPackageJsonScripts: false,
+  typescript: true,
+  unocss: false,
+  vue: false,
+}, {
+  ignores: [
+    'cspell.config.yaml',
+    'cspell.config.yml',
+    '**/drizzle/**',
+    '**/.astro/**',
+    '.agents/**',
+    '.worktrees/**',
+    '.github/**',
+    'docs/superpowers/**',
+    'CLAUDE.md', // Skip the symbolic link
+  ],
+}, {
+  rules: {
+    'antfu/import-dedupe': 'error',
+    // TODO: remove this
+    'depend/ban-dependencies': 'warn',
+    'import/order': 'off',
+    'markdown/no-missing-link-fragments': 'off',
+    'markdown/require-alt-text': 'off',
+
+    'no-console': ['error', { allow: ['warn', 'error', 'info'] }],
+    'no-restricted-syntax': [
+      'warn',
+      // Catches the manual `error instanceof Error ? error.message : ...`
+      // pattern AGENTS.md forbids. The selector matches a ConditionalExpression
+      // whose test is `<x> instanceof Error` and whose consequent is `<x>.message`,
+      // so it does NOT false-positive on `error instanceof Error ? error : new Error(...)`
+      // (where the consequent is the error itself, not its `.message`). Antfu's
+      // default no-restricted-syntax patterns are preserved alongside.
+      {
+        message: 'Avoid `error instanceof Error ? error.message : ...`. Use `errorMessageFrom(error)` from \'@moeru/std\'. Pair with `?? \'fallback\'` when a default is needed.',
+        selector: 'ConditionalExpression[test.type=\'BinaryExpression\'][test.operator=\'instanceof\'][test.right.name=\'Error\'][consequent.type=\'MemberExpression\'][consequent.property.name=\'message\']',
+      },
+      {
+        message: 'Avoid hand-written clamp logic. Use `clamp(value, lower, upper)` from `es-toolkit` instead.',
+        selector: 'FunctionDeclaration[id.name=/clamp/i] ReturnStatement CallExpression[callee.object.name=\'Math\'][callee.property.name=\'min\'] > CallExpression[callee.object.name=\'Math\'][callee.property.name=\'max\']:first-child',
+      },
+      {
+        message: 'Avoid hand-written clamp logic. Use `clamp(value, lower, upper)` from `es-toolkit` instead.',
+        selector: 'FunctionDeclaration[id.name=/clamp/i] ReturnStatement CallExpression[callee.object.name=\'Math\'][callee.property.name=\'max\'] > CallExpression[callee.object.name=\'Math\'][callee.property.name=\'min\']:first-child',
+      },
+      {
+        message: 'Do not use namespace imports from `valibot`. Import the used Valibot APIs by name instead.',
+        selector: 'ImportDeclaration[source.value=\'valibot\'] ImportNamespaceSpecifier',
+      },
+      'TSEnumDeclaration[const=true]',
+      'TSExportAssignment',
     ],
-    rules: {
-      'vue/prefer-separate-static-class': 'off',
-      'perfectionist/sort-imports': [
+    'style/padding-line-between-statements': 'error',
+    'vue/prefer-separate-static-class': 'off',
+    'yaml/plain-scalar': 'off',
+  },
+}, {
+  files: ['apps/server/**/*.ts'],
+  rules: {
+    'no-restricted-syntax': [
+      'error',
+      {
+        message: 'Do not mock internal project modules with vi.mock or vi.doMock. Inject the collaborator through the route, service, or factory boundary and pass a fake or spy in tests.',
+        selector: 'CallExpression[callee.type=\'MemberExpression\'][callee.object.name=\'vi\'][callee.property.name=/^(mock|doMock)$/][arguments.0.type=\'Literal\'][arguments.0.value=/^(\\.|@proj-airi\\/|~)/]',
+      },
+      {
+        message: 'Do not use vi.hoisted. If a test needs a collaborator spy, expose an explicit dependency injection point instead of hoisting module mocks.',
+        selector: 'CallExpression[callee.type=\'MemberExpression\'][callee.object.name=\'vi\'][callee.property.name=\'hoisted\']',
+      },
+    ],
+  },
+}, {
+  ignores: [
+    '**/*.md',
+  ],
+  rules: {
+    'perfectionist/sort-imports': [
       'error',
       {
         groups: [
@@ -41,28 +113,26 @@ export default await antfu(
         newlinesBetween: 1,
       },
     ],
+  },
+}, {
+  files: [
+    '**/tsconfig.json',
+    '**/tsconfig.app.json',
+    '**/tsconfig.node.json',
+  ],
+  rules: {
+    'jsonc/sort-keys': 'off',
+  },
+},
+// Thanks to
+// https://github.com/unocss/unocss/issues/2603#issuecomment-2806940007
+{
+  ...unocss,
+  files: ['playground/**/*'],
+  name: 'internal/unocss',
+  settings: {
+    unocss: {
+      configPath: fileURLToPath(new URL('./playground/uno.config.ts', import.meta.url)),
     },
   },
-  {
-    files: [
-      '**/tsconfig.json',
-      '**/tsconfig.app.json',
-      '**/tsconfig.node.json',
-    ],
-    rules: {
-      'jsonc/sort-keys': 'off',
-    },
-  },
-  // Thanks to
-  // https://github.com/unocss/unocss/issues/2603#issuecomment-2806940007
-  {
-    ...unocss,
-    files: ['playground/**/*'],
-    name: 'internal/unocss',
-    settings: {
-      unocss: {
-        configPath: fileURLToPath(new URL('./playground/uno.config.ts', import.meta.url)),
-      },
-    },
-  },
-)
+}) as ReturnType<typeof defineConfig>

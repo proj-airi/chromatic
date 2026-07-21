@@ -7,17 +7,16 @@ export const VAR_BRIGHTNESS = '--chromatic-bri'
 export const VAR_SATURATION = '--chromatic-sat'
 
 export interface PresetChromaticOptions {
+  bakeColors?: boolean
   baseHue: number
   colors: Record<string, number>
-  bakeColors?: boolean
   modifierUtilityPrefixes?: string[]
   modifierVariantName?: string
 }
 
-export type Shade = 'DEFAULT' | 50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 | 950
+export type Shade = 50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 | 950 | 'DEFAULT'
 
 export const VAR_CHROMA_SHADES = {
-  DEFAULT: '--chromatic-chroma',
   50: '--chromatic-chroma-50',
   100: '--chromatic-chroma-100',
   200: '--chromatic-chroma-200',
@@ -29,13 +28,104 @@ export const VAR_CHROMA_SHADES = {
   800: '--chromatic-chroma-800',
   900: '--chromatic-chroma-900',
   950: '--chromatic-chroma-950',
+  DEFAULT: '--chromatic-chroma',
 } as const satisfies Record<Shade, string>
 
 const DEFAULT_MODIFIER_UTILITY_PREFIXES = ['bg', 'text', 'border', 'ring', 'fill', 'stroke']
 const percentRE = /^\d{1,3}(?:\.\d+)?$/
 
-function escapeRegExp(raw: string): string {
-  return raw.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')
+export function createBakedColorShades(baseHue: number, hueOffset: number) {
+  const defaultChroma = 0.18 + Math.cos(baseHue * Math.PI / 180) * 0.04
+  const hue = baseHue + hueOffset
+
+  return {
+    50: `color-mix(in srgb, oklch(${lightness(95)} ${chroma(`${defaultChroma * 0.3}`)} ${hue} / %alpha) 30%, oklch(100% 0 360 / %alpha))`,
+    100: `color-mix(in srgb, oklch(${lightness(95)} ${chroma(`${defaultChroma * 0.5}`)} ${hue} / %alpha) 80%, oklch(100% 0 360 / %alpha))`,
+    200: `oklch(${lightness(90)} ${chroma(`${defaultChroma * 0.6}`)} ${hue} / %alpha)`,
+    300: `oklch(${lightness(85)} ${chroma(`${defaultChroma * 0.75}`)} ${hue} / %alpha)`,
+    400: `oklch(${lightness(74)} ${chroma(`${defaultChroma * 0.85}`)} ${hue} / %alpha)`,
+    500: `oklch(${lightness(62)} ${chroma(`${defaultChroma}`)} ${hue} / %alpha)`,
+    600: `oklch(${lightness(54)} ${chroma(`${defaultChroma * 1.15}`)} ${hue} / %alpha)`,
+    700: `oklch(${lightness(49)} ${chroma(`${defaultChroma * 1.1}`)} ${hue} / %alpha)`,
+    800: `oklch(${lightness(42)} ${chroma(`${defaultChroma * 0.85}`)} ${hue} / %alpha)`,
+    900: `oklch(${lightness(37)} ${chroma(`${defaultChroma * 0.7}`)} ${hue} / %alpha)`,
+    950: `oklch(${lightness(29)} ${chroma(`${defaultChroma * 0.5}`)} ${hue} / %alpha)`,
+    DEFAULT: `oklch(${lightness(62)} ${chroma(`${defaultChroma}`)} ${hue} / %alpha)`,
+  } as const satisfies Record<Shade, string>
+}
+
+export function createPresetChromatic(calledFromExtension = false) {
+  return definePreset<PresetChromaticOptions>((options) => {
+    return {
+      name: 'preset-chromatic',
+      ...options && {
+        preflights: [
+          {
+            getCSS() {
+              return `
+:root {
+  ${VAR_HUE}: ${options.baseHue};
+  ${VAR_BRIGHTNESS}: 1;
+  ${VAR_SATURATION}: 1;
+  ${VAR_CHROMA_SHADES.DEFAULT}: calc(0.18 + (cos(var(${VAR_HUE}) * 3.14159265 / 180) * 0.04));
+  ${VAR_CHROMA_SHADES[50]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.3);
+  ${VAR_CHROMA_SHADES[100]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.5);
+  ${VAR_CHROMA_SHADES[200]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.6);
+  ${VAR_CHROMA_SHADES[300]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.75);
+  ${VAR_CHROMA_SHADES[400]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.85);
+  ${VAR_CHROMA_SHADES[500]}: var(${VAR_CHROMA_SHADES.DEFAULT});
+  ${VAR_CHROMA_SHADES[600]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 1.15);
+  ${VAR_CHROMA_SHADES[700]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 1.1);
+  ${VAR_CHROMA_SHADES[800]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.85);
+  ${VAR_CHROMA_SHADES[900]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.7);
+  ${VAR_CHROMA_SHADES[950]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.5);
+}
+          `
+            },
+            layer: LAYER_PREFLIGHTS,
+          },
+        ],
+        theme: {
+          colors: Object
+            .entries(options.colors)
+            .reduce((colors, [key, hueOffset]) => {
+              colors[key] = (options.bakeColors || calledFromExtension)
+                ? createBakedColorShades(options.baseHue, hueOffset)
+                : createVarBasedColorShades(hueOffset)
+
+              return colors
+            }, {} as Record<string, Record<Shade, string>>),
+        },
+        variants: [
+          variantChromaticAdjustments(
+            options.modifierUtilityPrefixes,
+            options.modifierVariantName,
+          ),
+        ],
+      },
+    }
+  })
+}
+
+export function createVarBasedColorShades(hueOffset: number) {
+  return {
+    50: `color-mix(in srgb, oklch(${lightness(95)} ${chroma(`var(${VAR_CHROMA_SHADES[50]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha) 30%, oklch(100% 0 360 / %alpha))`,
+    100: `color-mix(in srgb, oklch(${lightness(95)} ${chroma(`var(${VAR_CHROMA_SHADES[100]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha) 80%, oklch(100% 0 360 / %alpha))`,
+    200: `oklch(${lightness(90)} ${chroma(`var(${VAR_CHROMA_SHADES[200]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
+    300: `oklch(${lightness(85)} ${chroma(`var(${VAR_CHROMA_SHADES[300]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
+    400: `oklch(${lightness(74)} ${chroma(`var(${VAR_CHROMA_SHADES[400]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
+    500: `oklch(${lightness(62)} ${chroma(`var(${VAR_CHROMA_SHADES[500]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
+    600: `oklch(${lightness(54)} ${chroma(`var(${VAR_CHROMA_SHADES[600]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
+    700: `oklch(${lightness(49)} ${chroma(`var(${VAR_CHROMA_SHADES[700]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
+    800: `oklch(${lightness(42)} ${chroma(`var(${VAR_CHROMA_SHADES[800]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
+    900: `oklch(${lightness(37)} ${chroma(`var(${VAR_CHROMA_SHADES[900]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
+    950: `oklch(${lightness(29)} ${chroma(`var(${VAR_CHROMA_SHADES[950]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
+    DEFAULT: `oklch(${lightness(62)} ${chroma(`var(${VAR_CHROMA_SHADES.DEFAULT})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
+  } as const satisfies Record<Shade, string>
+}
+
+function chroma(level: string): string {
+  return `calc(${level} * var(${VAR_SATURATION}))`
 }
 
 function createColorUtilityPrefixRE(prefixes: string[]): RegExp {
@@ -48,6 +138,14 @@ function createColorUtilityPrefixRE(prefixes: string[]): RegExp {
     return /^$/
 
   return new RegExp(`^(?:${sanitized.join('|')})-`)
+}
+
+function escapeRegExp(raw: string): string {
+  return raw.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function lightness(level: number): string {
+  return `clamp(0%, calc(${level}% * var(${VAR_BRIGHTNESS})), 100%)`
 }
 
 function toRatio(raw: string): string {
@@ -63,7 +161,6 @@ function variantChromaticAdjustments(
   const colorUtilityPrefixRE = createColorUtilityPrefixRE(utilityPrefixes)
 
   return {
-    name,
     match(matcher) {
       if (!colorUtilityPrefixRE.test(matcher))
         return
@@ -94,7 +191,6 @@ function variantChromaticAdjustments(
         return
 
       return {
-        matcher: base,
         body: (body) => {
           if (!body.length)
             return body
@@ -107,105 +203,9 @@ function variantChromaticAdjustments(
 
           return next
         },
+        matcher: base,
       }
     },
+    name,
   }
-}
-
-function lightness(level: number): string {
-  return `clamp(0%, calc(${level}% * var(${VAR_BRIGHTNESS})), 100%)`
-}
-
-function chroma(level: string): string {
-  return `calc(${level} * var(${VAR_SATURATION}))`
-}
-
-export function createVarBasedColorShades(hueOffset: number) {
-  return {
-    DEFAULT: `oklch(${lightness(62)} ${chroma(`var(${VAR_CHROMA_SHADES.DEFAULT})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
-    50: `color-mix(in srgb, oklch(${lightness(95)} ${chroma(`var(${VAR_CHROMA_SHADES[50]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha) 30%, oklch(100% 0 360 / %alpha))`,
-    100: `color-mix(in srgb, oklch(${lightness(95)} ${chroma(`var(${VAR_CHROMA_SHADES[100]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha) 80%, oklch(100% 0 360 / %alpha))`,
-    200: `oklch(${lightness(90)} ${chroma(`var(${VAR_CHROMA_SHADES[200]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
-    300: `oklch(${lightness(85)} ${chroma(`var(${VAR_CHROMA_SHADES[300]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
-    400: `oklch(${lightness(74)} ${chroma(`var(${VAR_CHROMA_SHADES[400]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
-    500: `oklch(${lightness(62)} ${chroma(`var(${VAR_CHROMA_SHADES[500]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
-    600: `oklch(${lightness(54)} ${chroma(`var(${VAR_CHROMA_SHADES[600]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
-    700: `oklch(${lightness(49)} ${chroma(`var(${VAR_CHROMA_SHADES[700]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
-    800: `oklch(${lightness(42)} ${chroma(`var(${VAR_CHROMA_SHADES[800]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
-    900: `oklch(${lightness(37)} ${chroma(`var(${VAR_CHROMA_SHADES[900]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
-    950: `oklch(${lightness(29)} ${chroma(`var(${VAR_CHROMA_SHADES[950]})`)} calc(var(${VAR_HUE}) + ${hueOffset}) / %alpha)`,
-  } as const satisfies Record<Shade, string>
-}
-
-export function createBakedColorShades(baseHue: number, hueOffset: number) {
-  const defaultChroma = 0.18 + Math.cos(baseHue * Math.PI / 180) * 0.04
-  const hue = baseHue + hueOffset
-
-  return {
-    DEFAULT: `oklch(${lightness(62)} ${chroma(`${defaultChroma}`)} ${hue} / %alpha)`,
-    50: `color-mix(in srgb, oklch(${lightness(95)} ${chroma(`${defaultChroma * 0.3}`)} ${hue} / %alpha) 30%, oklch(100% 0 360 / %alpha))`,
-    100: `color-mix(in srgb, oklch(${lightness(95)} ${chroma(`${defaultChroma * 0.5}`)} ${hue} / %alpha) 80%, oklch(100% 0 360 / %alpha))`,
-    200: `oklch(${lightness(90)} ${chroma(`${defaultChroma * 0.6}`)} ${hue} / %alpha)`,
-    300: `oklch(${lightness(85)} ${chroma(`${defaultChroma * 0.75}`)} ${hue} / %alpha)`,
-    400: `oklch(${lightness(74)} ${chroma(`${defaultChroma * 0.85}`)} ${hue} / %alpha)`,
-    500: `oklch(${lightness(62)} ${chroma(`${defaultChroma}`)} ${hue} / %alpha)`,
-    600: `oklch(${lightness(54)} ${chroma(`${defaultChroma * 1.15}`)} ${hue} / %alpha)`,
-    700: `oklch(${lightness(49)} ${chroma(`${defaultChroma * 1.1}`)} ${hue} / %alpha)`,
-    800: `oklch(${lightness(42)} ${chroma(`${defaultChroma * 0.85}`)} ${hue} / %alpha)`,
-    900: `oklch(${lightness(37)} ${chroma(`${defaultChroma * 0.7}`)} ${hue} / %alpha)`,
-    950: `oklch(${lightness(29)} ${chroma(`${defaultChroma * 0.5}`)} ${hue} / %alpha)`,
-  } as const satisfies Record<Shade, string>
-}
-
-export function createPresetChromatic(calledFromExtension = false) {
-  return definePreset<PresetChromaticOptions>((options) => {
-    return {
-      name: 'preset-chromatic',
-      ...options && {
-        variants: [
-          variantChromaticAdjustments(
-            options.modifierUtilityPrefixes,
-            options.modifierVariantName,
-          ),
-        ],
-        theme: {
-          colors: Object
-            .entries(options.colors)
-            .reduce((colors, [key, hueOffset]) => {
-              colors[key] = (options.bakeColors || calledFromExtension)
-                ? createBakedColorShades(options.baseHue, hueOffset)
-                : createVarBasedColorShades(hueOffset)
-
-              return colors
-            }, {} as Record<string, Record<Shade, string>>),
-        },
-        preflights: [
-          {
-            layer: LAYER_PREFLIGHTS,
-            getCSS() {
-              return `
-:root {
-  ${VAR_HUE}: ${options.baseHue};
-  ${VAR_BRIGHTNESS}: 1;
-  ${VAR_SATURATION}: 1;
-  ${VAR_CHROMA_SHADES.DEFAULT}: calc(0.18 + (cos(var(${VAR_HUE}) * 3.14159265 / 180) * 0.04));
-  ${VAR_CHROMA_SHADES[50]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.3);
-  ${VAR_CHROMA_SHADES[100]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.5);
-  ${VAR_CHROMA_SHADES[200]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.6);
-  ${VAR_CHROMA_SHADES[300]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.75);
-  ${VAR_CHROMA_SHADES[400]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.85);
-  ${VAR_CHROMA_SHADES[500]}: var(${VAR_CHROMA_SHADES.DEFAULT});
-  ${VAR_CHROMA_SHADES[600]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 1.15);
-  ${VAR_CHROMA_SHADES[700]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 1.1);
-  ${VAR_CHROMA_SHADES[800]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.85);
-  ${VAR_CHROMA_SHADES[900]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.7);
-  ${VAR_CHROMA_SHADES[950]}: calc(var(${VAR_CHROMA_SHADES.DEFAULT}) * 0.5);
-}
-          `
-            },
-          },
-        ],
-      },
-    }
-  })
 }

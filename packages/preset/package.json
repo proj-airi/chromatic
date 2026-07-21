@@ -52,6 +52,6 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@unocss/core": "^66.6.8"
+    "@unocss/core": "catalog:"
   }
 }

@@ -44,31 +44,16 @@ function clampChannel(channel: number): number {
   return Math.min(1, Math.max(0, channel))
 }
 
-function mixSrgbWithWhite(color: ReturnType<typeof oklch>, baseRatio: number) {
-  const rgb = toRgb(color) as Rgb | undefined
-  if (!rgb)
-    throw new Error('Invalid color provided for rgb conversion in test')
-
-  const whiteRatio = 1 - baseRatio
-
-  return {
-    mode: 'rgb' as const,
-    r: clampChannel(rgb.r * baseRatio + whiteRatio),
-    g: clampChannel(rgb.g * baseRatio + whiteRatio),
-    b: clampChannel(rgb.b * baseRatio + whiteRatio),
-  }
-}
-
 function legacyToHex(shade: Shade, brightness: number, saturation: number, baseHue: number, hueOffset = 0) {
   const hue = baseHue + hueOffset
   const defaultChroma = 0.18 + Math.cos(baseHue * Math.PI / 180) * 0.04
   const lightness = Math.max(0, Math.min(100, shadeLightness[shade] * (brightness / 100)))
   const chroma = Math.max(0, defaultChroma * shadeChromaMultiplier[shade] * (saturation / 100))
   const color = oklch({
-    mode: 'oklch',
-    l: lightness / 100,
     c: chroma,
     h: hue,
+    l: lightness / 100,
+    mode: 'oklch',
   })
 
   if (!color)
@@ -79,6 +64,21 @@ function legacyToHex(shade: Shade, brightness: number, saturation: number, baseH
     return formatHex(mixSrgbWithWhite(color, mixRatio))
 
   return formatHex(color)
+}
+
+function mixSrgbWithWhite(color: ReturnType<typeof oklch>, baseRatio: number) {
+  const rgb = toRgb(color) as Rgb | undefined
+  if (!rgb)
+    throw new Error('Invalid color provided for rgb conversion in test')
+
+  const whiteRatio = 1 - baseRatio
+
+  return {
+    b: clampChannel(rgb.b * baseRatio + whiteRatio),
+    g: clampChannel(rgb.g * baseRatio + whiteRatio),
+    mode: 'rgb' as const,
+    r: clampChannel(rgb.r * baseRatio + whiteRatio),
+  }
 }
 
 describe('chromaticColorFrom', () => {
@@ -92,10 +92,10 @@ describe('chromaticColorFrom', () => {
       for (const brightness of brightnessValues) {
         for (const saturation of saturationValues) {
           const actual = chromaticColorFrom(baseHue, {
-            shade,
-            hueOffset,
             brightness,
+            hueOffset,
             saturation,
+            shade,
           }).toHex()
 
           const expected = legacyToHex(shade, brightness, saturation, baseHue, hueOffset)

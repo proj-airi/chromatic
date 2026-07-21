@@ -12,10 +12,10 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "types": [
+      "node",
       "vitest",
       "vite/client"
     ],
-
     "allowJs": true,
 
     /* Linting */
@@ -36,7 +36,6 @@
     { "path": "./packages/preset/tsconfig.json" },
     { "path": "./playground/tsconfig.json" }
   ],
-  "files": [],
   "include": [
     "uno.config.ts",
     "eslint.config.ts"

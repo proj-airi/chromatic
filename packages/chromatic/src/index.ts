@@ -4,32 +4,20 @@ import { converter, formatCss, formatHex, oklch } from 'culori'
 
 export type { Color, Oklch }
 
-export type Shade = 50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 | 950
-
-export interface ShadeConfig {
-  lightness: number
-  chromaMultiplier: number
-  mixWithWhite?: number
-}
-
-export type ShadeConfigMap = Record<Shade, ShadeConfig>
-
-export type ColorShades = Record<Shade, ChromaticColor>
-
-export interface ChromaticColorFromOptions {
-  baseChroma?: number
-  hueOffset?: number
-  shade?: Shade
-  brightness?: number
-  saturation?: number
-  alpha?: number
-}
-
 export interface ChromaticColor {
   color: Color
-  withAlpha: (alpha: number) => ChromaticColor
-  toHex: () => string
   toCSS: () => string
+  toHex: () => string
+  withAlpha: (alpha: number) => ChromaticColor
+}
+
+export interface ChromaticColorFromOptions {
+  alpha?: number
+  baseChroma?: number
+  brightness?: number
+  hueOffset?: number
+  saturation?: number
+  shade?: Shade
 }
 
 export interface ChromaticPalette {
@@ -39,95 +27,55 @@ export interface ChromaticPalette {
   shadeBy: (shade: Shade) => ChromaticColor
 }
 
+export type ColorShades = Record<Shade, ChromaticColor>
+
+export type Shade = 50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 | 950
+
+export interface ShadeConfig {
+  chromaMultiplier: number
+  lightness: number
+  mixWithWhite?: number
+}
+
+export type ShadeConfigMap = Record<Shade, ShadeConfig>
+
 const toRgb = converter('rgb')
 export const symbolicShadeValues: Shade[] = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]
 
 export const symbolicShadeConfig: ShadeConfigMap = {
-  50: { lightness: 0.95, chromaMultiplier: 0.3, mixWithWhite: 0.3 },
-  100: { lightness: 0.95, chromaMultiplier: 0.5, mixWithWhite: 0.8 },
-  200: { lightness: 0.90, chromaMultiplier: 0.6 },
-  300: { lightness: 0.85, chromaMultiplier: 0.75 },
-  400: { lightness: 0.74, chromaMultiplier: 0.85 },
-  500: { lightness: 0.62, chromaMultiplier: 1.0 },
-  600: { lightness: 0.54, chromaMultiplier: 1.15 },
-  700: { lightness: 0.49, chromaMultiplier: 1.1 },
-  800: { lightness: 0.42, chromaMultiplier: 0.85 },
-  900: { lightness: 0.37, chromaMultiplier: 0.7 },
-  950: { lightness: 0.29, chromaMultiplier: 0.5 },
+  50: { chromaMultiplier: 0.3, lightness: 0.95, mixWithWhite: 0.3 },
+  100: { chromaMultiplier: 0.5, lightness: 0.95, mixWithWhite: 0.8 },
+  200: { chromaMultiplier: 0.6, lightness: 0.90 },
+  300: { chromaMultiplier: 0.75, lightness: 0.85 },
+  400: { chromaMultiplier: 0.85, lightness: 0.74 },
+  500: { chromaMultiplier: 1.0, lightness: 0.62 },
+  600: { chromaMultiplier: 1.15, lightness: 0.54 },
+  700: { chromaMultiplier: 1.1, lightness: 0.49 },
+  800: { chromaMultiplier: 0.85, lightness: 0.42 },
+  900: { chromaMultiplier: 0.7, lightness: 0.37 },
+  950: { chromaMultiplier: 0.5, lightness: 0.29 },
 }
 
 export interface ColorScheme {
   // eslint-disable-next-line ts/no-unsafe-function-type
   [colorName: string]: ColorShades | Function
+  addColor: (name: string, hueOffset: number) => ColorScheme
+  adjustHue: (newBaseHue: number) => ColorScheme
   getColor: (colorName: string, shade?: Shade) => ChromaticColor | undefined
   toCSS: (colorName: string, shade?: Shade) => string | undefined
   toHex: (colorName: string, shade?: Shade) => string | undefined
-  adjustHue: (newBaseHue: number) => ColorScheme
-  addColor: (name: string, hueOffset: number) => ColorScheme
 }
 
 export interface DynamicTheme {
-  getScheme: () => ColorScheme
-  setHue: (newHue: number) => ColorScheme
   animateHue: (targetHue: number, steps?: number, duration?: number) => Promise<ColorScheme>
+  getScheme: () => ColorScheme
   seasonal: {
+    autumn: () => ColorScheme
     spring: () => ColorScheme
     summer: () => ColorScheme
-    autumn: () => ColorScheme
     winter: () => ColorScheme
   }
-}
-
-function colorToChromaticColor(color: Color): ChromaticColor {
-  return {
-    color,
-    withAlpha: (alpha: number): ChromaticColor => {
-      const rgba = oklch(color)
-      if (!rgba) {
-        throw new Error('Invalid color provided for alpha adjustment')
-      }
-
-      return colorToChromaticColor(oklch({
-        mode: 'oklch',
-        l: rgba.l,
-        c: rgba.c,
-        h: rgba.h,
-        alpha,
-      }))
-    },
-    toHex: () => formatHex(color),
-    toCSS: () => formatCss(color),
-  }
-}
-
-function clampPercentToRatio(value: number | undefined): number {
-  const parsed = Number.isFinite(value) ? value! : 100
-  const bounded = Math.min(200, Math.max(0, parsed))
-  return bounded / 100
-}
-
-function wrapHue(hue: number): number {
-  return ((hue % 360) + 360) % 360
-}
-
-function clampChannel(channel: number): number {
-  return Math.min(1, Math.max(0, channel))
-}
-
-function mixSrgbWithWhite(color: ReturnType<typeof oklch>, baseRatio: number): Color {
-  const rgb = toRgb(color) as Rgb | undefined
-  if (!rgb)
-    throw new Error('Invalid color provided for rgb conversion')
-
-  const whiteRatio = 1 - baseRatio
-
-  return {
-    mode: 'rgb',
-    r: clampChannel(rgb.r * baseRatio + whiteRatio),
-    g: clampChannel(rgb.g * baseRatio + whiteRatio),
-    b: clampChannel(rgb.b * baseRatio + whiteRatio),
-    alpha: rgb.alpha,
-  }
+  setHue: (newHue: number) => ColorScheme
 }
 
 /**
@@ -171,12 +119,12 @@ export function baseChromaByHue(baseHue: number): number {
  */
 export function chromaticColorFrom(baseHue = 200, options: ChromaticColorFromOptions = {}): ChromaticColor {
   const {
-    baseChroma = baseChromaByHue(baseHue),
-    hueOffset = 0,
-    shade = 500,
-    brightness = 100,
-    saturation = 100,
     alpha = 1,
+    baseChroma = baseChromaByHue(baseHue),
+    brightness = 100,
+    hueOffset = 0,
+    saturation = 100,
+    shade = 500,
   } = options
 
   const config = symbolicShadeConfig[shade]
@@ -184,17 +132,73 @@ export function chromaticColorFrom(baseHue = 200, options: ChromaticColorFromOpt
   const chroma = Math.max(0, baseChroma * config.chromaMultiplier * clampPercentToRatio(saturation))
 
   const color = oklch({
-    mode: 'oklch',
-    l: lightness,
+    alpha,
     c: chroma,
     h: wrapHue(baseHue + hueOffset),
-    alpha,
+    l: lightness,
+    mode: 'oklch',
   })
 
   if (config.mixWithWhite != null)
     return colorToChromaticColor(mixSrgbWithWhite(color, config.mixWithWhite))
 
   return colorToChromaticColor(color)
+}
+
+/**
+ * Create a dynamic theme controller that can update hue over time.
+ *
+ * @param baseHue Initial base hue in degrees. Defaults to `200`.
+ * @returns `DynamicTheme` with `getScheme`, `setHue`, `animateHue`, and seasonal presets.
+ *
+ * @example
+ * const dynamic = chromaticFrom(220.25)
+ * dynamic.setHue(280)
+ * const winter = dynamic.seasonal.winter()
+ */
+export function chromaticFrom(baseHue = 200): DynamicTheme {
+  let currentHue = baseHue
+  const currentColors: Record<string, number> = {
+    accent: 180,
+    neutral: 0,
+    primary: 0,
+    secondary: 60,
+  }
+
+  return {
+    animateHue: (targetHue: number, steps = 10, duration = 1000): Promise<ColorScheme> => {
+      const startHue = currentHue
+      const stepSize = (targetHue - startHue) / steps
+      const stepDuration = duration / steps
+
+      return new Promise((resolve) => {
+        let step = 0
+        const interval = setInterval(() => {
+          currentHue = startHue + (stepSize * step)
+          step++
+
+          if (step > steps) {
+            clearInterval(interval)
+            currentHue = targetHue
+            resolve(themeFrom(currentHue, currentColors))
+          }
+        }, stepDuration)
+      })
+    },
+    getScheme: (): ColorScheme => themeFrom(currentHue, currentColors),
+    // Generate seasonal themes
+    seasonal: {
+      autumn: (): ColorScheme => themeFrom(30, currentColors), // Orange base
+      spring: (): ColorScheme => themeFrom(120, currentColors), // Green base
+      summer: (): ColorScheme => themeFrom(45, currentColors), // Yellow base
+      winter: (): ColorScheme => themeFrom(240, currentColors), // Blue base
+    },
+
+    setHue: (newHue: number): ColorScheme => {
+      currentHue = newHue
+      return themeFrom(currentHue, currentColors)
+    },
+  }
 }
 
 /**
@@ -214,10 +218,10 @@ export function chromaticPaletteFrom(baseHue = 200, baseChroma?: number): Chroma
 
   const shadeBy = (shade: Shade, alpha = 1, hueOffset = 0): ChromaticColor =>
     chromaticColorFrom(baseHue, {
+      alpha,
       baseChroma: chroma,
       hueOffset,
       shade,
-      alpha,
     })
 
   return {
@@ -235,6 +239,23 @@ export function chromaticPaletteFrom(baseHue = 200, baseChroma?: number): Chroma
 
     shadeBy,
   }
+}
+
+/**
+ * Convenience helper to get all shades for a single named color at a hue.
+ *
+ * @param hue Base hue in degrees.
+ * Example: `220.25`.
+ * @param name Optional temporary color key name. Defaults to `'color'`.
+ * @returns Shade map (`50..950`) for that color.
+ *
+ * @example
+ * const shades = colorBy(220.25)
+ * shades[500].toHex()
+ */
+export function colorBy(hue: number, name = 'color'): ColorShades {
+  const scheme = themeFrom(hue, { [name]: 0 })
+  return scheme[name] as ColorShades
 }
 
 /**
@@ -264,23 +285,11 @@ export function mixColors(color1: Color, color2: Color, ratio = 0.5): Color {
   }
 
   return oklch({
-    mode: 'oklch',
-    l: c1.l * (1 - ratio) + c2.l * ratio,
     c: c1.c * (1 - ratio) + c2.c * ratio,
     h: mixHues(c1.h ?? 0, c2.h ?? 0, ratio),
+    l: c1.l * (1 - ratio) + c2.l * ratio,
+    mode: 'oklch',
   })
-}
-
-function mixHues(h1: number, h2: number, ratio: number): number {
-  // Handle hue interpolation considering circular nature
-  let diff = h2 - h1
-
-  if (diff > 180)
-    diff -= 360
-  if (diff < -180)
-    diff += 360
-
-  return (h1 + diff * ratio + 360) % 360
 }
 
 /**
@@ -309,6 +318,9 @@ export function themeFrom(baseHue = 200, colors: Record<string, number> = {}): C
 
   return {
     ...scheme,
+    addColor: (name: string, hueOffset: number): ColorScheme =>
+      themeFrom(baseHue, { ...colors, [name]: hueOffset }),
+    adjustHue: (newBaseHue: number): ColorScheme => themeFrom(newBaseHue, colors),
     getColor: (colorName: string, shade: Shade = 500): ChromaticColor | undefined =>
       scheme[colorName]?.[shade],
     toCSS: (colorName: string, shade: Shade = 500): string | undefined => {
@@ -319,81 +331,69 @@ export function themeFrom(baseHue = 200, colors: Record<string, number> = {}): C
       const color = scheme[colorName]?.[shade]
       return color ? formatHex(color.color) : undefined
     },
-    adjustHue: (newBaseHue: number): ColorScheme => themeFrom(newBaseHue, colors),
-    addColor: (name: string, hueOffset: number): ColorScheme =>
-      themeFrom(baseHue, { ...colors, [name]: hueOffset }),
   }
 }
 
-/**
- * Create a dynamic theme controller that can update hue over time.
- *
- * @param baseHue Initial base hue in degrees. Defaults to `200`.
- * @returns `DynamicTheme` with `getScheme`, `setHue`, `animateHue`, and seasonal presets.
- *
- * @example
- * const dynamic = chromaticFrom(220.25)
- * dynamic.setHue(280)
- * const winter = dynamic.seasonal.winter()
- */
-export function chromaticFrom(baseHue = 200): DynamicTheme {
-  let currentHue = baseHue
-  const currentColors: Record<string, number> = {
-    primary: 0,
-    secondary: 60,
-    accent: 180,
-    neutral: 0,
+function clampChannel(channel: number): number {
+  return Math.min(1, Math.max(0, channel))
+}
+
+function clampPercentToRatio(value: number | undefined): number {
+  const parsed = Number.isFinite(value) ? value! : 100
+  const bounded = Math.min(200, Math.max(0, parsed))
+  return bounded / 100
+}
+
+function colorToChromaticColor(color: Color): ChromaticColor {
+  return {
+    color,
+    toCSS: () => formatCss(color),
+    toHex: () => formatHex(color),
+    withAlpha: (alpha: number): ChromaticColor => {
+      const rgba = oklch(color)
+      if (!rgba) {
+        throw new Error('Invalid color provided for alpha adjustment')
+      }
+
+      return colorToChromaticColor(oklch({
+        alpha,
+        c: rgba.c,
+        h: rgba.h,
+        l: rgba.l,
+        mode: 'oklch',
+      }))
+    },
   }
+}
+
+function mixHues(h1: number, h2: number, ratio: number): number {
+  // Handle hue interpolation considering circular nature
+  let diff = h2 - h1
+
+  if (diff > 180)
+    diff -= 360
+  if (diff < -180)
+    diff += 360
+
+  return (h1 + diff * ratio + 360) % 360
+}
+
+function mixSrgbWithWhite(color: ReturnType<typeof oklch>, baseRatio: number): Color {
+  const rgb = toRgb(color) as Rgb | undefined
+  if (!rgb)
+    throw new Error('Invalid color provided for rgb conversion')
+
+  const whiteRatio = 1 - baseRatio
 
   return {
-    getScheme: (): ColorScheme => themeFrom(currentHue, currentColors),
-    setHue: (newHue: number): ColorScheme => {
-      currentHue = newHue
-      return themeFrom(currentHue, currentColors)
-    },
-    animateHue: (targetHue: number, steps = 10, duration = 1000): Promise<ColorScheme> => {
-      const startHue = currentHue
-      const stepSize = (targetHue - startHue) / steps
-      const stepDuration = duration / steps
-
-      return new Promise((resolve) => {
-        let step = 0
-        const interval = setInterval(() => {
-          currentHue = startHue + (stepSize * step)
-          step++
-
-          if (step > steps) {
-            clearInterval(interval)
-            currentHue = targetHue
-            resolve(themeFrom(currentHue, currentColors))
-          }
-        }, stepDuration)
-      })
-    },
-
-    // Generate seasonal themes
-    seasonal: {
-      spring: (): ColorScheme => themeFrom(120, currentColors), // Green base
-      summer: (): ColorScheme => themeFrom(45, currentColors), // Yellow base
-      autumn: (): ColorScheme => themeFrom(30, currentColors), // Orange base
-      winter: (): ColorScheme => themeFrom(240, currentColors), // Blue base
-    },
+    alpha: rgb.alpha,
+    b: clampChannel(rgb.b * baseRatio + whiteRatio),
+    g: clampChannel(rgb.g * baseRatio + whiteRatio),
+    mode: 'rgb',
+    r: clampChannel(rgb.r * baseRatio + whiteRatio),
   }
 }
 
-/**
- * Convenience helper to get all shades for a single named color at a hue.
- *
- * @param hue Base hue in degrees.
- * Example: `220.25`.
- * @param name Optional temporary color key name. Defaults to `'color'`.
- * @returns Shade map (`50..950`) for that color.
- *
- * @example
- * const shades = colorBy(220.25)
- * shades[500].toHex()
- */
-export function colorBy(hue: number, name = 'color'): ColorShades {
-  const scheme = themeFrom(hue, { [name]: 0 })
-  return scheme[name] as ColorShades
+function wrapHue(hue: number): number {
+  return ((hue % 360) + 360) % 360
 }
