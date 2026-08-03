@@ -195,13 +195,20 @@ function variantChromaticAdjustments(
           if (!body.length)
             return body
 
-          const next = [...body]
-          if (brightness)
-            next.push([VAR_BRIGHTNESS, toRatio(brightness)])
-          if (saturation)
-            next.push([VAR_SATURATION, toRatio(saturation)])
+          const brightnessRatio = brightness && toRatio(brightness)
+          const saturationRatio = saturation && toRatio(saturation)
 
-          return next
+          return body.map(([property, value]) => {
+            if (typeof value !== 'string')
+              return [property, value]
+
+            return [
+              property,
+              value
+                .replaceAll(`var(${VAR_BRIGHTNESS})`, brightnessRatio || `var(${VAR_BRIGHTNESS})`)
+                .replaceAll(`var(${VAR_SATURATION})`, saturationRatio || `var(${VAR_SATURATION})`),
+            ]
+          })
         },
         matcher: base,
       }
