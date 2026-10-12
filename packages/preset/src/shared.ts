@@ -1,4 +1,4 @@
-import type { VariantObject } from '@unocss/core'
+import type { UtilObject, VariantObject } from '@unocss/core'
 
 import { definePreset, LAYER_PREFLIGHTS } from '@unocss/core'
 
@@ -33,6 +33,8 @@ export const VAR_CHROMA_SHADES = {
 
 const DEFAULT_MODIFIER_UTILITY_PREFIXES = ['bg', 'text', 'border', 'ring', 'fill', 'stroke']
 const percentRE = /^\d{1,3}(?:\.\d+)?$/
+// Same placeholders as `alphaPlaceholders` of `@unocss/rule-utils`.
+const alphaPlaceholdersRE = /%alpha|<alpha-value>/g
 
 export function createBakedColorShades(baseHue: number, hueOffset: number) {
   const defaultChroma = 0.18 + Math.cos(baseHue * Math.PI / 180) * 0.04
@@ -59,6 +61,7 @@ export function createPresetChromatic(calledFromExtension = false) {
     return {
       name: 'preset-chromatic',
       ...options && {
+        postprocess: [resolveLeftoverAlphaPlaceholders],
         preflights: [
           {
             getCSS() {
@@ -146,6 +149,28 @@ function escapeRegExp(raw: string): string {
 
 function lightness(level: number): string {
   return `clamp(0%, calc(${level}% * var(${VAR_BRIGHTNESS})), 100%)`
+}
+
+/**
+ * Replaces alpha placeholders that the base preset left in a utility with `1`.
+ *
+ * NOTICE:
+ * presetWind4 inlines a theme color that contains `var(` (every shade of the runtime palette contains
+ * `var(--chromatic-hue)`) into the utility as `color-mix(<method>, <color> <opacity>, transparent)` without touching
+ * its `%alpha` placeholder (`colorCSSGenerator` in `@unocss/preset-wind4/dist/utils-*.mjs`, 66.7.5 lines 569-586).
+ * It only replaces placeholders with `1` when it emits theme variables (`getThemeVarsMap` in
+ * `@unocss/preset-wind4/dist/index.mjs`, line 456), which it skips for such colors. The leftover `%alpha` makes the
+ * declaration invalid, so browsers drop it.
+ * Replacing the placeholder with `1` gives the value wind4 itself would use; the surrounding `color-mix(…, transparent)`
+ * still applies the utility's opacity. presetWind3 resolves every placeholder before postprocessing (it puts the
+ * opacity into the color), so this never changes wind3 output.
+ * Remove when presetWind4 resolves placeholders of inlined `var(` colors itself.
+ */
+function resolveLeftoverAlphaPlaceholders(util: UtilObject): void {
+  for (const entry of util.entries) {
+    if (typeof entry[1] === 'string')
+      entry[1] = entry[1].replaceAll(alphaPlaceholdersRE, '1')
+  }
 }
 
 function toRatio(raw: string): string {
