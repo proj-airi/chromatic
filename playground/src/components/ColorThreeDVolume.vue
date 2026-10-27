@@ -4,6 +4,7 @@ import type { Shade } from '@proj-airi/chromatic'
 import { chromaticColorFrom } from '@proj-airi/chromatic'
 import { Color, Group, InstancedMesh, Matrix4, MeshBasicMaterial, PerspectiveCamera, Scene, SphereGeometry, WebGLRenderer } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { useElementVisibility } from '@vueuse/core'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 
 const props = withDefaults(defineProps<{
@@ -85,14 +86,28 @@ function buildPointCloud() {
   return cloud
 }
 
+// Only animate while on screen: the docs page has two of these, and auto-rotation would otherwise run forever.
+const visible = useElementVisibility(mountEl)
+
 function renderLoop() {
-  if (!renderer || !scene || !camera || !controls)
+  frameHandle = 0
+  if (!renderer || !scene || !camera || !controls || !visible.value)
     return
 
   controls.update()
   renderer.render(scene, camera)
   frameHandle = requestAnimationFrame(renderLoop)
 }
+
+function startRenderLoop() {
+  if (!frameHandle)
+    frameHandle = requestAnimationFrame(renderLoop)
+}
+
+watch(visible, (isVisible) => {
+  if (isVisible)
+    startRenderLoop()
+})
 
 function setupRenderer() {
   const el = mountEl.value
@@ -137,7 +152,7 @@ function setupRenderer() {
   resizeObserver = new ResizeObserver(resize)
   resizeObserver.observe(el)
   updatePointCloudColors(props.hue)
-  renderLoop()
+  startRenderLoop()
 }
 
 onMounted(setupRenderer)

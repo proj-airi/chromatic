@@ -4,6 +4,7 @@ import type { ChromaPoint, Model, TunedParams } from './chroma-model'
 import { symbolicShadeValues } from '@proj-airi/chromatic'
 import { BufferAttribute, BufferGeometry, Color, DoubleSide, Group, LineBasicMaterial, LineSegments, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, WebGLRenderer } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { useElementVisibility } from '@vueuse/core'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { residualColor, residualOf, useChromaModel } from './chroma-model'
@@ -159,8 +160,12 @@ function buildFrame(): LineSegments<BufferGeometry, LineBasicMaterial> {
   return new LineSegments(geometry, new LineBasicMaterial({ color: 0x888888, opacity: 0.45, transparent: true }))
 }
 
+// Only animate while on screen.
+const visible = useElementVisibility(mountEl)
+
 function renderLoop() {
-  if (!renderer || !scene || !camera || !controls)
+  frameHandle = 0
+  if (!renderer || !scene || !camera || !controls || !visible.value)
     return
 
   controls.autoRotate = autoRotate.value
@@ -168,6 +173,16 @@ function renderLoop() {
   renderer.render(scene, camera)
   frameHandle = requestAnimationFrame(renderLoop)
 }
+
+function startRenderLoop() {
+  if (!frameHandle)
+    frameHandle = requestAnimationFrame(renderLoop)
+}
+
+watch(visible, (isVisible) => {
+  if (isVisible)
+    startRenderLoop()
+})
 
 function setupRenderer() {
   const el = mountEl.value
@@ -225,7 +240,7 @@ function setupRenderer() {
   resizeObserver = new ResizeObserver(resize)
   resizeObserver.observe(el)
   updateGeometry()
-  renderLoop()
+  startRenderLoop()
 }
 
 onMounted(setupRenderer)

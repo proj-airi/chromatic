@@ -1,29 +1,15 @@
 <!-- eslint-disable markdown/no-missing-link-fragments -->
 
 <script setup>
-import { VAR_HUE } from '@proj-airi/unocss-preset-chromatic'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive } from 'vue'
 
 import { opacityCellClass, shadeSelectorClass, symbolicCellClass } from './class-catalog'
-import ColorChromaCurve from '../components/ColorChromaCurve.vue'
 import ColorGroup from '../components/ColorGroup.vue'
 import ColorHueRange from '../components/ColorHueRange.vue'
 import ColorThreeDVolume from '../components/ColorThreeDVolume.vue'
+import { useThemeHue } from '../composables/theme-hue'
 
-const DEFAULT_THEME_COLORS_HUE = 220.25
-const themeColorsHue = ref(DEFAULT_THEME_COLORS_HUE)
-
-onMounted(() => {
-  const hue = document.documentElement.style.getPropertyValue(VAR_HUE)
-  const hueF = Number.parseFloat(hue)
-
-  themeColorsHue.value = hueF >= 0 && hueF <= 360 ? hueF : DEFAULT_THEME_COLORS_HUE
-  document.documentElement.style.setProperty(VAR_HUE, themeColorsHue.value.toString())
-})
-
-watch(themeColorsHue, () => {
-  document.documentElement.style.setProperty(VAR_HUE, themeColorsHue.value.toString())
-})
+const themeColorsHue = useThemeHue()
 
 const shades = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]
 const opacities = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
@@ -498,13 +484,9 @@ Let's explore it with the help of a 3D volume!
 
 In the `classic` model (the one of earlier versions), every shade has a fixed OKLCH lightness, and the chroma follows `0.18 + cos(hue) × 0.04` multiplied by a per-shade factor. The sRGB gamut, however, is very uneven across hues: cyan and sky blue only reach high chroma at high lightness, so part of the curve falls outside of what a screen can show and gets channel-clipped (usually into a darker, heavier color).
 
-The charts below compare the classic curve against the sRGB boundary, against a tunable model (violet) that adds a hue-dependent lightness bump and a Fourier fit of the chroma to the gamut, against Tailwind v4 (amber), and against a model fitted to Tailwind by least squares (teal). The residual heatmap and the 3D surface show where either model still misses the boundary.
+The default `fitted` model varies lightness, chroma and a small hue drift with hue instead, fitted to the Tailwind CSS v4 palette (and to a share of the sRGB gamut around yellow). The <RouterLink to="/lab" class="text-primary-500 dark:text-primary-400 underline">chroma lab</RouterLink> compares both models against the sRGB / P3 gamut and Tailwind v4, and tunes the fit the shipped coefficients are generated from (`pnpm generate:fitted`).
 
-<div my-4>
-  <ColorChromaCurve v-model:hue="themeColorsHue" />
-</div>
-
-The teal model is the one shipped as `model: 'fitted'`, the default, generated with the default "Fit to Tailwind" settings above (`pnpm generate:fitted`). The black "classic" curve is the model of earlier versions; to keep it:
+To keep the colors of earlier versions:
 
 ```ts
 presetChromatic({
