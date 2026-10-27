@@ -1,28 +1,15 @@
 <!-- eslint-disable markdown/no-missing-link-fragments -->
 
 <script setup>
-import { VAR_HUE } from '@proj-airi/unocss-preset-chromatic'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive } from 'vue'
 
 import { opacityCellClass, shadeSelectorClass, symbolicCellClass } from './class-catalog'
 import ColorGroup from '../components/ColorGroup.vue'
 import ColorHueRange from '../components/ColorHueRange.vue'
 import ColorThreeDVolume from '../components/ColorThreeDVolume.vue'
+import { useThemeHue } from '../composables/theme-hue'
 
-const DEFAULT_THEME_COLORS_HUE = 220.25
-const themeColorsHue = ref(DEFAULT_THEME_COLORS_HUE)
-
-onMounted(() => {
-  const hue = document.documentElement.style.getPropertyValue(VAR_HUE)
-  const hueF = Number.parseFloat(hue)
-
-  themeColorsHue.value = hueF >= 0 && hueF <= 360 ? hueF : DEFAULT_THEME_COLORS_HUE
-  document.documentElement.style.setProperty(VAR_HUE, themeColorsHue.value.toString())
-})
-
-watch(themeColorsHue, () => {
-  document.documentElement.style.setProperty(VAR_HUE, themeColorsHue.value.toString())
-})
+const themeColorsHue = useThemeHue()
 
 const shades = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]
 const opacities = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
@@ -492,6 +479,22 @@ Let's explore it with the help of a 3D volume!
     </template>
   </div>
 </div>
+
+#### How is chroma distributed?
+
+In the `v1` model (the one of chromatic 1.x), every shade has a fixed OKLCH lightness, and the chroma follows `0.18 + cos(hue) × 0.04` multiplied by a per-shade factor. The sRGB gamut, however, is very uneven across hues: cyan and sky blue only reach high chroma at high lightness, so part of the curve falls outside of what a screen can show and gets channel-clipped (usually into a darker, heavier color).
+
+The default `v2` model varies lightness, chroma and a small hue drift with hue instead, fitted to the Tailwind CSS v4 palette (and to a share of the sRGB gamut around yellow). The <RouterLink to="/lab" class="text-primary-500 dark:text-primary-400 underline">chroma lab</RouterLink> compares both models against the sRGB / P3 gamut and Tailwind v4, and tunes the fit the shipped coefficients are generated from (`pnpm generate:fitted`).
+
+To keep the colors of earlier versions:
+
+```ts
+presetChromatic({
+  baseHue: 220.25,
+  colors: { primary: 0 },
+  model: 'v1', // 'v2' by default
+})
+```
 
 Do check out [Project AIRI](https://airi.moeru.ai/docs/en/). You can get to play the theme colors with the hue slider and see how the colors change in real time!
 
