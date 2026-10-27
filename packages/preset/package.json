@@ -55,6 +55,7 @@
     "@proj-airi/chromatic": "workspace:^"
   },
   "devDependencies": {
+    "@csstools/css-calc": "catalog:",
     "@unocss/core": "catalog:"
   }
 }
