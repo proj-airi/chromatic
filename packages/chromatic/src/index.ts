@@ -2,7 +2,11 @@ import type { Color, Oklch, Rgb } from 'culori'
 
 import { converter, formatCss, formatHex, oklch } from 'culori'
 
+import { fittedOklch } from './fitted'
+
 export type { Color, Oklch }
+export { evaluateFittedBlock, FITTED_MODEL, fittedOklch, fourierSeries } from './fitted'
+export type { FittedBlock, FittedModel, FittedOklch } from './fitted'
 
 export interface ChromaticColor {
   color: Color
@@ -13,17 +17,37 @@ export interface ChromaticColor {
 
 export interface ChromaticColorFromOptions {
   alpha?: number
+  /** Only used by the `classic` model. */
   baseChroma?: number
   brightness?: number
   hueOffset?: number
+  /** Colour model, defaults to `fitted`. See {@link ChromaticModel}. */
+  model?: ChromaticModel
   saturation?: number
   shade?: Shade
 }
 
+/**
+ * How shades are derived from a hue.
+ *
+ * - `fitted`: lightness, chroma and a small hue drift all vary smoothly with hue, fitted to the Tailwind CSS v4
+ *   palette (and to a share of the sRGB gamut around yellow). See {@link fittedOklch}. The default.
+ * - `classic`: fixed lightness per shade, chroma `(0.18 + 0.04 · cos(hue)) × per-shade multiplier`, shades 50 / 100
+ *   mixed with white. The model of versions before `fitted` existed.
+ */
+export type ChromaticModel = 'classic' | 'fitted'
+
+export interface ChromaticModelOptions {
+  /** Colour model, defaults to `fitted`. */
+  model?: ChromaticModel
+}
+
 export interface ChromaticPalette {
   baseHue: number
+  /** Chroma of shade 500 at `baseHue`. */
   chroma: number
   getAllShades: (hueOffset?: number, alpha?: number) => ColorShades
+  model: ChromaticModel
   shadeBy: (shade: Shade) => ChromaticColor
 }
 
@@ -104,7 +128,8 @@ export function baseChromaByHue(baseHue: number): number {
  * - `brightness`: percentage where `100` is unchanged, `120` is brighter, `80` is dimmer
  * - `saturation`: percentage where `100` is unchanged, `0` is grayscale-ish, `150` is more vivid
  * - `alpha`: opacity from `0` to `1` (example: `0.5`)
- * - `baseChroma`: optional override for computed base chroma (advanced use)
+ * - `baseChroma`: optional override for computed base chroma (advanced use, `classic` model only)
+ * - `model`: `'fitted'` (default) or `'classic'`, see {@link ChromaticModel}
  * @returns `ChromaticColor` wrapper with `.toHex()`, `.toCSS()`, and `.withAlpha()`.
  *
  * @example
@@ -123,9 +148,22 @@ export function chromaticColorFrom(baseHue = 200, options: ChromaticColorFromOpt
     baseChroma = baseChromaByHue(baseHue),
     brightness = 100,
     hueOffset = 0,
+    model = 'fitted',
     saturation = 100,
     shade = 500,
   } = options
+
+  if (model === 'fitted') {
+    const fitted = fittedOklch(shade, wrapHue(baseHue + hueOffset))
+
+    return colorToChromaticColor(oklch({
+      alpha,
+      c: Math.max(0, fitted.c * clampPercentToRatio(saturation)),
+      h: fitted.h,
+      l: Math.min(1, Math.max(0, fitted.l * clampPercentToRatio(brightness))),
+      mode: 'oklch',
+    }))
+  }
 
   const config = symbolicShadeConfig[shade]
   const lightness = Math.min(1, Math.max(0, config.lightness * clampPercentToRatio(brightness)))
@@ -149,6 +187,7 @@ export function chromaticColorFrom(baseHue = 200, options: ChromaticColorFromOpt
  * Create a dynamic theme controller that can update hue over time.
  *
  * @param baseHue Initial base hue in degrees. Defaults to `200`.
+ * @param options Optional `{ model }`, see {@link ChromaticModel}.
  * @returns `DynamicTheme` with `getScheme`, `setHue`, `animateHue`, and seasonal presets.
  *
  * @example
@@ -156,7 +195,7 @@ export function chromaticColorFrom(baseHue = 200, options: ChromaticColorFromOpt
  * dynamic.setHue(280)
  * const winter = dynamic.seasonal.winter()
  */
-export function chromaticFrom(baseHue = 200): DynamicTheme {
+export function chromaticFrom(baseHue = 200, options: ChromaticModelOptions = {}): DynamicTheme {
   let currentHue = baseHue
   const currentColors: Record<string, number> = {
     accent: 180,
@@ -180,23 +219,23 @@ export function chromaticFrom(baseHue = 200): DynamicTheme {
           if (step > steps) {
             clearInterval(interval)
             currentHue = targetHue
-            resolve(themeFrom(currentHue, currentColors))
+            resolve(themeFrom(currentHue, currentColors, options))
           }
         }, stepDuration)
       })
     },
-    getScheme: (): ColorScheme => themeFrom(currentHue, currentColors),
+    getScheme: (): ColorScheme => themeFrom(currentHue, currentColors, options),
     // Generate seasonal themes
     seasonal: {
-      autumn: (): ColorScheme => themeFrom(30, currentColors), // Orange base
-      spring: (): ColorScheme => themeFrom(120, currentColors), // Green base
-      summer: (): ColorScheme => themeFrom(45, currentColors), // Yellow base
-      winter: (): ColorScheme => themeFrom(240, currentColors), // Blue base
+      autumn: (): ColorScheme => themeFrom(30, currentColors, options), // Orange base
+      spring: (): ColorScheme => themeFrom(120, currentColors, options), // Green base
+      summer: (): ColorScheme => themeFrom(45, currentColors, options), // Yellow base
+      winter: (): ColorScheme => themeFrom(240, currentColors, options), // Blue base
     },
 
     setHue: (newHue: number): ColorScheme => {
       currentHue = newHue
-      return themeFrom(currentHue, currentColors)
+      return themeFrom(currentHue, currentColors, options)
     },
   }
 }
@@ -205,7 +244,8 @@ export function chromaticFrom(baseHue = 200): DynamicTheme {
  * Create a reusable palette object for one base hue.
  *
  * @param baseHue Base hue in degrees. Defaults to `200`.
- * @param baseChroma Optional manual chroma override. If omitted, it is computed from `baseHue`.
+ * @param baseChroma Optional manual chroma override (`classic` model only). If omitted, it is computed from `baseHue`.
+ * @param options Optional `{ model }`, see {@link ChromaticModel}.
  * @returns `ChromaticPalette` with `shadeBy()` and `getAllShades()`.
  *
  * @example
@@ -213,14 +253,18 @@ export function chromaticFrom(baseHue = 200): DynamicTheme {
  * const primary500 = palette.shadeBy(500).toHex()
  * const shifted = palette.getAllShades(60) // all shades with +60 hue offset
  */
-export function chromaticPaletteFrom(baseHue = 200, baseChroma?: number): ChromaticPalette {
-  const chroma = baseChroma ?? baseChromaByHue(baseHue)
+export function chromaticPaletteFrom(baseHue = 200, baseChroma?: number, options: ChromaticModelOptions = {}): ChromaticPalette {
+  const { model = 'fitted' } = options
+  const chroma = model === 'fitted'
+    ? fittedOklch(500, wrapHue(baseHue)).c
+    : baseChroma ?? baseChromaByHue(baseHue)
 
   const shadeBy = (shade: Shade, alpha = 1, hueOffset = 0): ChromaticColor =>
     chromaticColorFrom(baseHue, {
       alpha,
-      baseChroma: chroma,
+      baseChroma: model === 'fitted' ? undefined : chroma,
       hueOffset,
+      model,
       shade,
     })
 
@@ -237,6 +281,7 @@ export function chromaticPaletteFrom(baseHue = 200, baseChroma?: number): Chroma
       return shades
     },
 
+    model,
     shadeBy,
   }
 }
@@ -247,14 +292,15 @@ export function chromaticPaletteFrom(baseHue = 200, baseChroma?: number): Chroma
  * @param hue Base hue in degrees.
  * Example: `220.25`.
  * @param name Optional temporary color key name. Defaults to `'color'`.
+ * @param options Optional `{ model }`, see {@link ChromaticModel}.
  * @returns Shade map (`50..950`) for that color.
  *
  * @example
  * const shades = colorBy(220.25)
  * shades[500].toHex()
  */
-export function colorBy(hue: number, name = 'color'): ColorShades {
-  const scheme = themeFrom(hue, { [name]: 0 })
+export function colorBy(hue: number, name = 'color', options: ChromaticModelOptions = {}): ColorShades {
+  const scheme = themeFrom(hue, { [name]: 0 }, options)
   return scheme[name] as ColorShades
 }
 
@@ -298,6 +344,7 @@ export function mixColors(color1: Color, color2: Color, ratio = 0.5): Color {
  * @param baseHue Base hue in degrees. Defaults to `200`.
  * @param colors Map of color name -> hue offset in degrees.
  * Example: `{ primary: 0, secondary: 60, accent: 180 }`
+ * @param options Optional `{ model }`, see {@link ChromaticModel}.
  * @returns `ColorScheme` with named shade maps and helpers (`getColor`, `toHex`, `toCSS`).
  *
  * @example
@@ -308,8 +355,8 @@ export function mixColors(color1: Color, color2: Color, ratio = 0.5): Color {
  * })
  * scheme.toHex('primary', 500)
  */
-export function themeFrom(baseHue = 200, colors: Record<string, number> = {}): ColorScheme {
-  const palette = chromaticPaletteFrom(baseHue)
+export function themeFrom(baseHue = 200, colors: Record<string, number> = {}, options: ChromaticModelOptions = {}): ColorScheme {
+  const palette = chromaticPaletteFrom(baseHue, undefined, options)
 
   const scheme: Record<string, ColorShades> = {}
   for (const [name, hueOffset] of Object.entries(colors)) {
@@ -319,8 +366,8 @@ export function themeFrom(baseHue = 200, colors: Record<string, number> = {}): C
   return {
     ...scheme,
     addColor: (name: string, hueOffset: number): ColorScheme =>
-      themeFrom(baseHue, { ...colors, [name]: hueOffset }),
-    adjustHue: (newBaseHue: number): ColorScheme => themeFrom(newBaseHue, colors),
+      themeFrom(baseHue, { ...colors, [name]: hueOffset }, options),
+    adjustHue: (newBaseHue: number): ColorScheme => themeFrom(newBaseHue, colors, options),
     getColor: (colorName: string, shade: Shade = 500): ChromaticColor | undefined =>
       scheme[colorName]?.[shade],
     toCSS: (colorName: string, shade: Shade = 500): string | undefined => {
