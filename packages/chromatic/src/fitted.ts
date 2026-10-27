@@ -1,6 +1,6 @@
 import type { Shade } from './index'
 
-import { FITTED_MODEL } from './fitted-coefficients'
+import { MODEL_V2 } from './model-v2'
 
 /**
  * One fitted quantity (lightness, chroma or hue drift) as a function of shade and hue:
@@ -35,7 +35,7 @@ export interface FittedOklch {
   l: number
 }
 
-export { FITTED_MODEL }
+export { MODEL_V2 }
 
 const DEG = Math.PI / 180
 
@@ -43,7 +43,7 @@ const DEG = Math.PI / 180
  * Evaluate one fitted block for a shade row.
  *
  * @param block The fitted block.
- * @param shadeIndex Row index into `FITTED_MODEL.shades`.
+ * @param shadeIndex Row index into the model's `shades`.
  * @param hue Hue in degrees.
  */
 export function evaluateFittedBlock(block: FittedBlock, shadeIndex: number, hue: number): number {
@@ -54,7 +54,7 @@ export function evaluateFittedBlock(block: FittedBlock, shadeIndex: number, hue:
 }
 
 /**
- * OKLCH of a shade in the `fitted` model, before brightness / saturation adjustments.
+ * OKLCH of a shade in a fitted model (`v2` by default), before brightness / saturation adjustments.
  *
  * The model is a smooth fit of the Tailwind CSS v4 palette over hue, except around yellow (≈ 65°–145°), where it
  * targets a share of the sRGB gamut instead to avoid neon light shades. See `scripts/fitted/`.
@@ -66,7 +66,7 @@ export function evaluateFittedBlock(block: FittedBlock, shadeIndex: number, hue:
  * @example
  * fittedOklch(500, 220.25) // ≈ { l: 0.701, c: 0.135, h: 220.25 }
  */
-export function fittedOklch(shade: Shade, hue: number, model: FittedModel = FITTED_MODEL): FittedOklch {
+export function fittedOklch(shade: Shade, hue: number, model: FittedModel = MODEL_V2): FittedOklch {
   const s = model.shades.indexOf(shade)
   const l = evaluateFittedBlock(model.lightness, s, hue)
   const c = evaluateFittedBlock(model.chroma, s, hue)

@@ -14,7 +14,7 @@ function createUno(wind: 'wind3' | 'wind4' = 'wind3') {
   return createGenerator({
     presets: [
       wind === 'wind3' ? presetWind3() : presetWind4(),
-      // no `model`: fitted is the default
+      // no `model`: v2 is the default
       presetChromatic({ baseHue: 220.25, colors }),
     ],
   })
@@ -53,7 +53,7 @@ function wrapDegrees(d: number): number {
   return ((d % 360) + 540) % 360 - 180
 }
 
-describe('fitted model', () => {
+describe('v2 model', () => {
   it('computes the same lightness, chroma and hue drift in CSS as in @proj-airi/chromatic', () => {
     const css = createFittedPreflight(220.25, colors)
 

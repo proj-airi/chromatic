@@ -94,7 +94,7 @@ describe('chromaticColorFrom', () => {
           const actual = chromaticColorFrom(baseHue, {
             brightness,
             hueOffset,
-            model: 'classic',
+            model: 'v1',
             saturation,
             shade,
           }).toHex()
@@ -107,12 +107,12 @@ describe('chromaticColorFrom', () => {
   })
 })
 
-describe('fitted model', () => {
+describe('v2 model', () => {
   const toOklch = (hex: string) => oklch(hex)!
 
   it('produces the fitted OKLCH for every shade and hue offset', () => {
     for (const shade of shadeValues) {
-      const color = chromaticColorFrom(220.25, { hueOffset: 60, model: 'fitted', shade }).color
+      const color = chromaticColorFrom(220.25, { hueOffset: 60, model: 'v2', shade }).color
       const expected = fittedOklch(shade, 280.25)
       const actual = oklch(color)!
 
@@ -124,7 +124,7 @@ describe('fitted model', () => {
 
   it('applies brightness and saturation as ratios and ignores baseChroma', () => {
     const fitted = fittedOklch(400, 30)
-    const color = oklch(chromaticColorFrom(30, { baseChroma: 0.01, brightness: 80, model: 'fitted', saturation: 150, shade: 400 }).color)!
+    const color = oklch(chromaticColorFrom(30, { baseChroma: 0.01, brightness: 80, model: 'v2', saturation: 150, shade: 400 }).color)!
 
     expect(color.l).toBeCloseTo(fitted.l * 0.8, 10)
     expect(color.c).toBeCloseTo(fitted.c * 1.5, 10)
@@ -132,7 +132,7 @@ describe('fitted model', () => {
 
   it('does not mix shades 50 / 100 with white', () => {
     const fitted = fittedOklch(50, 220.25)
-    const color = oklch(chromaticColorFrom(220.25, { model: 'fitted', shade: 50 }).color)!
+    const color = oklch(chromaticColorFrom(220.25, { model: 'v2', shade: 50 }).color)!
 
     expect(color.l).toBeCloseTo(fitted.l, 10)
     expect(color.c).toBeCloseTo(fitted.c, 10)
@@ -153,26 +153,26 @@ describe('fitted model', () => {
   })
 
   it('threads the model through palettes and schemes', () => {
-    const palette = chromaticPaletteFrom(220.25, undefined, { model: 'fitted' })
-    expect(palette.model).toBe('fitted')
+    const palette = chromaticPaletteFrom(220.25, undefined, { model: 'v2' })
+    expect(palette.model).toBe('v2')
     expect(palette.chroma).toBeCloseTo(fittedOklch(500, 220.25).c, 10)
 
-    const scheme = themeFrom(220.25, { accent: 180, primary: 0 }, { model: 'fitted' })
-    expect(scheme.toHex('accent', 700)).toBe(chromaticColorFrom(220.25, { hueOffset: 180, model: 'fitted', shade: 700 }).toHex())
-    expect(scheme.adjustHue(30).toHex('primary', 300)).toBe(chromaticColorFrom(30, { model: 'fitted', shade: 300 }).toHex())
+    const scheme = themeFrom(220.25, { accent: 180, primary: 0 }, { model: 'v2' })
+    expect(scheme.toHex('accent', 700)).toBe(chromaticColorFrom(220.25, { hueOffset: 180, model: 'v2', shade: 700 }).toHex())
+    expect(scheme.adjustHue(30).toHex('primary', 300)).toBe(chromaticColorFrom(30, { model: 'v2', shade: 300 }).toHex())
 
-    expect(colorBy(100, 'yellow', { model: 'fitted' })[400].toHex()).toBe(chromaticColorFrom(100, { model: 'fitted', shade: 400 }).toHex())
-    expect(toOklch(colorBy(100, 'x', { model: 'classic' })[400].toHex()).c).not.toBeCloseTo(toOklch(colorBy(100, 'x', { model: 'fitted' })[400].toHex()).c, 3)
+    expect(colorBy(100, 'yellow', { model: 'v2' })[400].toHex()).toBe(chromaticColorFrom(100, { model: 'v2', shade: 400 }).toHex())
+    expect(toOklch(colorBy(100, 'x', { model: 'v1' })[400].toHex()).c).not.toBeCloseTo(toOklch(colorBy(100, 'x', { model: 'v2' })[400].toHex()).c, 3)
   })
 
   it('is the default', () => {
-    expect(chromaticPaletteFrom(220.25).model).toBe('fitted')
-    expect(chromaticColorFrom(220.25, { shade: 300 }).toHex()).toBe(chromaticColorFrom(220.25, { model: 'fitted', shade: 300 }).toHex())
-    expect(themeFrom(220.25, { primary: 0 }).toHex('primary', 500)).toBe(chromaticColorFrom(220.25, { model: 'fitted', shade: 500 }).toHex())
+    expect(chromaticPaletteFrom(220.25).model).toBe('v2')
+    expect(chromaticColorFrom(220.25, { shade: 300 }).toHex()).toBe(chromaticColorFrom(220.25, { model: 'v2', shade: 300 }).toHex())
+    expect(themeFrom(220.25, { primary: 0 }).toHex('primary', 500)).toBe(chromaticColorFrom(220.25, { model: 'v2', shade: 500 }).toHex())
   })
 
-  it('still offers classic on request', () => {
-    expect(chromaticPaletteFrom(220.25, undefined, { model: 'classic' }).model).toBe('classic')
-    expect(themeFrom(220.25, { primary: 0 }, { model: 'classic' }).toHex('primary', 500)).toBe(chromaticColorFrom(220.25, { model: 'classic', shade: 500 }).toHex())
+  it('still offers v1 on request', () => {
+    expect(chromaticPaletteFrom(220.25, undefined, { model: 'v1' }).model).toBe('v1')
+    expect(themeFrom(220.25, { primary: 0 }, { model: 'v1' }).toHex('primary', 500)).toBe(chromaticColorFrom(220.25, { model: 'v1', shade: 500 }).toHex())
   })
 })

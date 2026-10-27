@@ -1,7 +1,7 @@
 import type { ChromaticModel, Shade as ChromaticShade, FittedBlock } from '@proj-airi/chromatic'
 import type { UtilObject, VariantObject } from '@unocss/core'
 
-import { FITTED_MODEL, fittedOklch } from '@proj-airi/chromatic'
+import { fittedOklch, MODEL_V2 } from '@proj-airi/chromatic'
 import { definePreset, LAYER_PREFLIGHTS } from '@unocss/core'
 
 export const VAR_HUE = '--chromatic-hue'
@@ -13,13 +13,13 @@ export interface PresetChromaticOptions {
   baseHue: number
   colors: Record<string, number>
   /**
-   * Colour model, `fitted` by default: lightness, chroma and a small hue drift vary with hue (fitted to Tailwind CSS
-   * v4, see `fittedOklch` of `@proj-airi/chromatic`). `classic` restores the fixed per-shade lightness and the
-   * `0.18 + 0.04 · cos(hue)` chroma of earlier versions.
+   * Colour model, `v2` by default: lightness, chroma and a small hue drift vary with hue (fitted to Tailwind CSS v4,
+   * see `fittedOklch` of `@proj-airi/chromatic`). `v1` restores the fixed per-shade lightness and the
+   * `0.18 + 0.04 · cos(hue)` chroma of chromatic 1.x.
    *
-   * NOTICE: with `fitted`, lightness / chroma / drift are computed from `--chromatic-hue` on `:root`. Overriding
+   * NOTICE: with `v2`, lightness / chroma / drift are computed from `--chromatic-hue` on `:root`. Overriding
    * `--chromatic-hue` on a subtree still rotates the hue there, but keeps the root's lightness and chroma, which is the
-   * same as `classic` does for chroma.
+   * same as `v1` does for chroma.
    */
   model?: ChromaticModel
   modifierUtilityPrefixes?: string[]
@@ -70,7 +70,7 @@ export function createBakedColorShades(baseHue: number, hueOffset: number) {
   } as const satisfies Record<Shade, string>
 }
 
-/** Shades of the `fitted` model with every value computed at build time. */
+/** Shades of the `v2` model with every value computed at build time. */
 export function createFittedBakedColorShades(baseHue: number, hueOffset: number) {
   const shades = Object.fromEntries(SHADES.map((shade) => {
     const { c, h, l } = fittedOklch(shade, wrapHue(baseHue + hueOffset))
@@ -81,7 +81,7 @@ export function createFittedBakedColorShades(baseHue: number, hueOffset: number)
 }
 
 /**
- * Custom properties of the `fitted` model. Per colour: the Fourier basis `-b-cos<k>` / `-b-sin<k>` of its hue, the
+ * Custom properties of the `v2` model. Per colour: the Fourier basis `-b-cos<k>` / `-b-sin<k>` of its hue, the
  * shared hue curves of the blocks that have them (`-f<k>`), then lightness (`-l-<shade>`, 0–1), chroma
  * (`-c-<shade>`) and hue drift in degrees (`-hd-<shade>`) for each shade.
  */
@@ -92,7 +92,7 @@ export function createFittedPreflight(baseHue: number, colors: Record<string, nu
     `${VAR_SATURATION}: 1;`,
   ]
 
-  const blocks = [FITTED_MODEL.lightness, FITTED_MODEL.chroma, FITTED_MODEL.hueDrift].filter(block => block != null)
+  const blocks = [MODEL_V2.lightness, MODEL_V2.chroma, MODEL_V2.hueDrift].filter(block => block != null)
   const harmonics = Math.max(...blocks.flatMap(block => block.curves.map(curve => harmonicsOf(curve, block.curvesHaveConst))))
 
   for (const [name, hueOffset] of Object.entries(colors)) {
@@ -104,10 +104,10 @@ export function createFittedPreflight(baseHue: number, colors: Record<string, nu
       lines.push(`${basis}-cos${k}: cos(${theta});`, `${basis}-sin${k}: sin(${theta});`)
     }
 
-    lines.push(...fittedBlockDeclarations(fittedVar(name, 'l'), FITTED_MODEL.lightness, basis, expr => expr))
-    lines.push(...fittedBlockDeclarations(fittedVar(name, 'c'), FITTED_MODEL.chroma, basis, expr => `max(0, ${expr})`))
-    if (FITTED_MODEL.hueDrift)
-      lines.push(...fittedBlockDeclarations(fittedVar(name, 'hd'), FITTED_MODEL.hueDrift, basis, expr => expr))
+    lines.push(...fittedBlockDeclarations(fittedVar(name, 'l'), MODEL_V2.lightness, basis, expr => expr))
+    lines.push(...fittedBlockDeclarations(fittedVar(name, 'c'), MODEL_V2.chroma, basis, expr => `max(0, ${expr})`))
+    if (MODEL_V2.hueDrift)
+      lines.push(...fittedBlockDeclarations(fittedVar(name, 'hd'), MODEL_V2.hueDrift, basis, expr => expr))
   }
 
   return `
@@ -117,12 +117,12 @@ ${lines.map(line => `  ${line}`).join('\n')}
 `
 }
 
-/** Shades of the `fitted` model reading the custom properties of {@link createFittedPreflight}. */
+/** Shades of the `v2` model reading the custom properties of {@link createFittedPreflight}. */
 export function createFittedVarBasedColorShades(name: string, hueOffset: number) {
   const shades = Object.fromEntries(SHADES.map((shade) => {
     const l = `var(${fittedVar(name, 'l')}-${shade})`
     const c = `var(${fittedVar(name, 'c')}-${shade})`
-    const drift = FITTED_MODEL.hueDrift ? ` + var(${fittedVar(name, 'hd')}-${shade})` : ''
+    const drift = MODEL_V2.hueDrift ? ` + var(${fittedVar(name, 'hd')}-${shade})` : ''
     return [
       shade,
       `oklch(clamp(0%, calc(${l} * 100% * var(${VAR_BRIGHTNESS})), 100%) ${chroma(c)} calc(var(${VAR_HUE}) + ${hueOffset}${drift}) / %alpha)`,
@@ -141,7 +141,7 @@ export function createPresetChromatic(calledFromExtension = false) {
         preflights: [
           {
             getCSS() {
-              if ((options.model ?? 'fitted') === 'fitted')
+              if ((options.model ?? 'v2') === 'v2')
                 return createFittedPreflight(options.baseHue, options.colors)
 
               return `
@@ -172,7 +172,7 @@ export function createPresetChromatic(calledFromExtension = false) {
             .entries(options.colors)
             .reduce((colors, [key, hueOffset]) => {
               const bake = options.bakeColors || calledFromExtension
-              if ((options.model ?? 'fitted') === 'fitted') {
+              if ((options.model ?? 'v2') === 'v2') {
                 colors[key] = bake
                   ? createFittedBakedColorShades(options.baseHue, hueOffset)
                   : createFittedVarBasedColorShades(key, hueOffset)

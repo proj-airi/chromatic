@@ -23,11 +23,13 @@
   ],
   "devDependencies": {
     "@moeru/eslint-config": "catalog:",
+    "@types/culori": "catalog:",
     "@types/node": "catalog:",
     "@unocss/eslint-config": "catalog:",
     "@unocss/eslint-plugin": "catalog:",
     "@unocss/preset-web-fonts": "catalog:",
     "bumpp": "catalog:",
+    "culori": "catalog:",
     "eslint": "catalog:",
     "taze": "catalog:",
     "tsdown": "catalog:",

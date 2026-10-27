@@ -5,7 +5,7 @@ import { converter, formatCss, formatHex, oklch } from 'culori'
 import { fittedOklch } from './fitted'
 
 export type { Color, Oklch }
-export { evaluateFittedBlock, FITTED_MODEL, fittedOklch, fourierSeries } from './fitted'
+export { evaluateFittedBlock, fittedOklch, fourierSeries, MODEL_V2 } from './fitted'
 export type { FittedBlock, FittedModel, FittedOklch } from './fitted'
 
 export interface ChromaticColor {
@@ -17,28 +17,29 @@ export interface ChromaticColor {
 
 export interface ChromaticColorFromOptions {
   alpha?: number
-  /** Only used by the `classic` model. */
+  /** Only used by the `v1` model. */
   baseChroma?: number
   brightness?: number
   hueOffset?: number
-  /** Colour model, defaults to `fitted`. See {@link ChromaticModel}. */
+  /** Colour model, defaults to `v2`. See {@link ChromaticModel}. */
   model?: ChromaticModel
   saturation?: number
   shade?: Shade
 }
 
 /**
- * How shades are derived from a hue.
+ * How shades are derived from a hue. Versions are frozen once released: a different fit becomes a new version, so
+ * colours never change under an existing one.
  *
- * - `fitted`: lightness, chroma and a small hue drift all vary smoothly with hue, fitted to the Tailwind CSS v4
- *   palette (and to a share of the sRGB gamut around yellow). See {@link fittedOklch}. The default.
- * - `classic`: fixed lightness per shade, chroma `(0.18 + 0.04 · cos(hue)) × per-shade multiplier`, shades 50 / 100
- *   mixed with white. The model of versions before `fitted` existed.
+ * - `v2`: lightness, chroma and a small hue drift all vary smoothly with hue, fitted to the Tailwind CSS v4 palette
+ *   (and to a share of the sRGB gamut around yellow). See {@link fittedOklch} and {@link MODEL_V2}. The default.
+ * - `v1`: fixed lightness per shade, chroma `(0.18 + 0.04 · cos(hue)) × per-shade multiplier`, shades 50 / 100 mixed
+ *   with white. The model of chromatic 1.x.
  */
-export type ChromaticModel = 'classic' | 'fitted'
+export type ChromaticModel = 'v1' | 'v2'
 
 export interface ChromaticModelOptions {
-  /** Colour model, defaults to `fitted`. */
+  /** Colour model, defaults to `v2`. */
   model?: ChromaticModel
 }
 
@@ -128,8 +129,8 @@ export function baseChromaByHue(baseHue: number): number {
  * - `brightness`: percentage where `100` is unchanged, `120` is brighter, `80` is dimmer
  * - `saturation`: percentage where `100` is unchanged, `0` is grayscale-ish, `150` is more vivid
  * - `alpha`: opacity from `0` to `1` (example: `0.5`)
- * - `baseChroma`: optional override for computed base chroma (advanced use, `classic` model only)
- * - `model`: `'fitted'` (default) or `'classic'`, see {@link ChromaticModel}
+ * - `baseChroma`: optional override for computed base chroma (advanced use, `v1` model only)
+ * - `model`: `'v2'` (default) or `'v1'`, see {@link ChromaticModel}
  * @returns `ChromaticColor` wrapper with `.toHex()`, `.toCSS()`, and `.withAlpha()`.
  *
  * @example
@@ -148,12 +149,12 @@ export function chromaticColorFrom(baseHue = 200, options: ChromaticColorFromOpt
     baseChroma = baseChromaByHue(baseHue),
     brightness = 100,
     hueOffset = 0,
-    model = 'fitted',
+    model = 'v2',
     saturation = 100,
     shade = 500,
   } = options
 
-  if (model === 'fitted') {
+  if (model === 'v2') {
     const fitted = fittedOklch(shade, wrapHue(baseHue + hueOffset))
 
     return colorToChromaticColor(oklch({
@@ -244,7 +245,7 @@ export function chromaticFrom(baseHue = 200, options: ChromaticModelOptions = {}
  * Create a reusable palette object for one base hue.
  *
  * @param baseHue Base hue in degrees. Defaults to `200`.
- * @param baseChroma Optional manual chroma override (`classic` model only). If omitted, it is computed from `baseHue`.
+ * @param baseChroma Optional manual chroma override (`v1` model only). If omitted, it is computed from `baseHue`.
  * @param options Optional `{ model }`, see {@link ChromaticModel}.
  * @returns `ChromaticPalette` with `shadeBy()` and `getAllShades()`.
  *
@@ -254,15 +255,15 @@ export function chromaticFrom(baseHue = 200, options: ChromaticModelOptions = {}
  * const shifted = palette.getAllShades(60) // all shades with +60 hue offset
  */
 export function chromaticPaletteFrom(baseHue = 200, baseChroma?: number, options: ChromaticModelOptions = {}): ChromaticPalette {
-  const { model = 'fitted' } = options
-  const chroma = model === 'fitted'
+  const { model = 'v2' } = options
+  const chroma = model === 'v2'
     ? fittedOklch(500, wrapHue(baseHue)).c
     : baseChroma ?? baseChromaByHue(baseHue)
 
   const shadeBy = (shade: Shade, alpha = 1, hueOffset = 0): ChromaticColor =>
     chromaticColorFrom(baseHue, {
       alpha,
-      baseChroma: model === 'fitted' ? undefined : chroma,
+      baseChroma: model === 'v2' ? undefined : chroma,
       hueOffset,
       model,
       shade,

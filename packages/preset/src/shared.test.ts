@@ -9,7 +9,7 @@ function createUno(
   options: Parameters<typeof presetChromatic>[0] = {
     baseHue: 220.25,
     colors: { primary: 0 },
-    model: 'classic',
+    model: 'v1',
   },
 ) {
   return createGenerator({
@@ -93,7 +93,7 @@ describe('chromatic symbolic adjustments', () => {
     const uno = await createUno({
       baseHue: 220.25,
       colors: { primary: 0 },
-      model: 'classic',
+      model: 'v1',
       modifierUtilityPrefixes: ['bg'],
     })
     const { css } = await uno.generate('bg-primary-500*120 text-primary-500*120', { preflights: false })

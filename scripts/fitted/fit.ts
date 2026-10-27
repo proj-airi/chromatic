@@ -1,5 +1,7 @@
 import type { Shade } from './tailwind-v4'
 
+import { clampChroma, differenceEuclidean } from 'culori'
+
 import { tailwindV4Families } from './tailwind-v4'
 
 const SHADES: Shade[] = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]
@@ -78,7 +80,7 @@ export interface TailwindFitOptions {
 }
 
 /**
- * The options `@proj-airi/chromatic`'s `fitted` model is generated from (`pnpm run generate:fitted`).
+ * The options `@proj-airi/chromatic`'s `v2` model is generated from (`pnpm run generate:fitted`).
  * Changing them here changes the playground defaults and, after regenerating, the shipped coefficients.
  */
 export const DEFAULT_TAILWIND_FIT_OPTIONS = {
@@ -304,10 +306,11 @@ export function crossValidateTailwindFit(options: TailwindFitOptions): DeltaERep
 }
 
 /** OKLab distance × 100 between two OKLCH colours. */
+const oklabDifference = differenceEuclidean('oklab')
+
+/** OKLab distance × 100 between two OKLCH colours. */
 export function deltaE(a: { c: number, h: number, l: number }, b: { c: number, h: number, l: number }): number {
-  const da = a.c * Math.cos(a.h * DEG) - b.c * Math.cos(b.h * DEG)
-  const db = a.c * Math.sin(a.h * DEG) - b.c * Math.sin(b.h * DEG)
-  return Math.hypot(a.l - b.l, da, db) * 100
+  return oklabDifference({ ...a, mode: 'oklch' }, { ...b, mode: 'oklch' }) * 100
 }
 
 export function fitTailwind(options: TailwindFitOptions, familyColumns = familyHues.map((_, j) => j)): TailwindFit {
@@ -337,36 +340,9 @@ export function fitTailwind(options: TailwindFitOptions, familyColumns = familyH
   }
 }
 
-/**
- * Largest OKLCH chroma that is still inside sRGB at lightness `l` and hue `h` (degrees).
- *
- * Same answer as culori's `clampChroma`, but a plain binary search over the OKLab → linear sRGB transform without
- * allocating colour objects, which keeps refitting (and cross-validation) interactive.
- */
+/** Largest OKLCH chroma that is still inside sRGB at lightness `l` and hue `h` (degrees). */
 export function maxSrgbChroma(l: number, h: number): number {
-  if (l <= 0 || l >= 1)
-    return 0
-  const cosH = Math.cos(h * DEG)
-  const sinH = Math.sin(h * DEG)
-  let lo = 0
-  let hi = 0.5
-  for (let i = 0; i < 32; i++) {
-    const c = (lo + hi) / 2
-    const a = c * cosH
-    const b = c * sinH
-    const l3 = (l + 0.3963377774 * a + 0.2158037573 * b) ** 3
-    const m3 = (l - 0.1055613458 * a - 0.0638541728 * b) ** 3
-    const s3 = (l - 0.0894841775 * a - 1.2914855480 * b) ** 3
-    const r = 4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3
-    const g = -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3
-    const bl = -0.0041960863 * l3 - 0.7034186147 * m3 + 1.7076147010 * s3
-    const eps = 1e-7
-    if (r >= -eps && r <= 1 + eps && g >= -eps && g <= 1 + eps && bl >= -eps && bl <= 1 + eps)
-      lo = c
-    else
-      hi = c
-  }
-  return lo
+  return clampChroma({ c: 0.5, h, l, mode: 'oklch' }, 'oklch').c
 }
 
 /** Raised-cosine weight in [0, 1]: 1 at the centre, 0 outside `width`. */
@@ -476,16 +452,16 @@ function fitRelativeChroma(
       push(hue, interpolateFamilies(ratios[s], hue), override?.anchorWeight ?? 1)
     const share = leastSquares(rows, values, 1e-8)
 
-    // Stage 2: exact gamut on a dense grid, fitted with many harmonics.
-    const denseRows: number[][] = []
-    const denseValues: number[] = []
-    for (let hue = 0; hue < 360; hue++) {
+    // Stage 2: exact gamut on a uniform 1° grid. On a uniform grid the sines and cosines are orthogonal, so the
+    // least-squares Fourier fit is just the truncated DFT: no system to solve.
+    const N = 360
+    const dense: number[] = []
+    for (let hue = 0; hue < N; hue++) {
       const l = Math.min(1, Math.max(0, lightness.predict(s, hue)))
       const h = hue + (drift ? drift.predict(s, hue) : 0)
-      denseRows.push(fourierBasis(hue, options.harmonics, true))
-      denseValues.push(Math.max(0, dot(share, fourierBasis(hue, options.ratioHarmonics, true))) * maxSrgbChroma(l, h))
+      dense.push(Math.max(0, dot(share, fourierBasis(hue, options.ratioHarmonics, true))) * maxSrgbChroma(l, h))
     }
-    return leastSquares(denseRows, denseValues, 1e-10)
+    return truncatedDft(dense, options.harmonics)
   })
 
   return {
@@ -505,4 +481,20 @@ function summarize(values: number[]): DeltaEReport {
 function tailwindRatio(): number[][] {
   tailwindRatioCache ??= matrixOf(s => s.c / Math.max(1e-6, maxSrgbChroma(s.l, s.h)))
   return tailwindRatioCache
+}
+
+/** `[a0, a1, b1, a2, b2, …]` of `samples` taken at `0, 1, …, N − 1` degrees over a full turn. */
+function truncatedDft(samples: number[], harmonics: number): number[] {
+  const n = samples.length
+  const coeffs = [samples.reduce((sum, v) => sum + v, 0) / n]
+  for (let k = 1; k <= harmonics; k++) {
+    let a = 0
+    let b = 0
+    for (let i = 0; i < n; i++) {
+      a += samples[i] * Math.cos(2 * Math.PI * k * i / n)
+      b += samples[i] * Math.sin(2 * Math.PI * k * i / n)
+    }
+    coeffs.push(2 * a / n, 2 * b / n)
+  }
+  return coeffs
 }
