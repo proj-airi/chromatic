@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// Kept in sync with moeru-ai/airi@911ebb28 packages/ui/src/components/form/range/color-hue-range.vue (MIT).
+import { computed } from 'vue'
+
 const props = defineProps<{
   disabled?: boolean
   class?: string
@@ -8,11 +11,21 @@ const colorValue = defineModel<number>('colorValue', {
   type: Number,
   default: 220.25,
 })
+
+const sliderValue = computed({
+  get: () => colorValue.value,
+  set: (value: number) => {
+    if (Number.isNaN(value))
+      return
+
+    colorValue.value = value
+  },
+})
 </script>
 
 <template>
   <input
-    v-model.number="colorValue"
+    v-model.number="sliderValue"
     type="range" min="0" max="360" step="0.01"
     class="color-hue-range"
     transition="all ease-in-out duration-250"
@@ -39,23 +52,23 @@ const colorValue = defineModel<number>('colorValue', {
   );
 
   &::-webkit-slider-thumb {
-    --at-apply: w-1 h-12 appearance-none rounded-md bg-neutral-600 cursor-pointer shadow-lg border-2 border-neutral-500
-      hover: bg-neutral-800 transition-colors duration-200;
+    --at-apply: w-1 h-12 hover:w-2 hover:h-13 appearance-none rounded-md bg-neutral-600 cursor-pointer shadow-lg border-2 border-neutral-500
+      hover: bg-neutral-800 transition-colors,transform,width,height duration-200 cursor-col-resize;
   }
 
   .dark &::-webkit-slider-thumb {
-    --at-apply: w-1 h-12 appearance-none rounded-md bg-neutral-100 cursor-pointer shadow-md border-2 border-white
-      hover: bg-neutral-300 transition-colors duration-200;
+    --at-apply: w-1 h-12 hover:w-2 hover:h-13 appearance-none rounded-md bg-neutral-100 cursor-pointer shadow-md border-2 border-white
+      hover: bg-neutral-300 transition-colors,transform,width,height duration-200 cursor-col-resize;
   }
 
   &::-moz-range-thumb {
-    --at-apply: w-1 h-12 appearance-none rounded-md bg-neutral-600 cursor-pointer shadow-lg border-2 border-neutral-500
-      hover: bg-neutral-800 transition-colors duration-200;
+    --at-apply: w-1 h-12 hover:w-2 hover:h-13 appearance-none rounded-md bg-neutral-600 cursor-pointer shadow-lg border-2 border-neutral-500
+      hover: bg-neutral-800 transition-colors,transform,width,height duration-200 cursor-col-resize;
   }
 
   .dark &::-moz-range-thumb {
-    --at-apply: w-1 h-12 appearance-none rounded-md bg-neutral-100 cursor-pointer shadow-md border-2 border-white
-      hover: bg-neutral-300 transition-colors duration-200;
+    --at-apply: w-1 h-12 hover:w-2 hover:h-13 appearance-none rounded-md bg-neutral-100 cursor-pointer shadow-md border-2 border-white
+      hover: bg-neutral-300 transition-colors,transform,width,height duration-200 cursor-col-resize;
   }
 }
 </style>
