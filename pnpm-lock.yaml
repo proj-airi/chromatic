@@ -176,6 +176,10 @@ importers:
         version: 66.7.5
 
   packages/preset:
+    dependencies:
+      '@proj-airi/chromatic':
+        specifier: workspace:^
+        version: link:../chromatic
     devDependencies:
       '@unocss/core':
         specifier: 'catalog:'

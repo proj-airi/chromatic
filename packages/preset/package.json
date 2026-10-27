@@ -51,6 +51,9 @@
     "build": "tsdown",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@proj-airi/chromatic": "workspace:^"
+  },
   "devDependencies": {
     "@unocss/core": "catalog:"
   }
