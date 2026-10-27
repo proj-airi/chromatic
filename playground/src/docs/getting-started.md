@@ -5,6 +5,7 @@ import { VAR_HUE } from '@proj-airi/unocss-preset-chromatic'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 
 import { opacityCellClass, shadeSelectorClass, symbolicCellClass } from './class-catalog'
+import ColorChromaCurve from '../components/ColorChromaCurve.vue'
 import ColorGroup from '../components/ColorGroup.vue'
 import ColorHueRange from '../components/ColorHueRange.vue'
 import ColorThreeDVolume from '../components/ColorThreeDVolume.vue'
@@ -492,6 +493,26 @@ Let's explore it with the help of a 3D volume!
     </template>
   </div>
 </div>
+
+#### How is chroma distributed?
+
+In the `classic` model (the one of earlier versions), every shade has a fixed OKLCH lightness, and the chroma follows `0.18 + cos(hue) × 0.04` multiplied by a per-shade factor. The sRGB gamut, however, is very uneven across hues: cyan and sky blue only reach high chroma at high lightness, so part of the curve falls outside of what a screen can show and gets channel-clipped (usually into a darker, heavier color).
+
+The charts below compare the classic curve against the sRGB boundary, against a tunable model (violet) that adds a hue-dependent lightness bump and a Fourier fit of the chroma to the gamut, against Tailwind v4 (amber), and against a model fitted to Tailwind by least squares (teal). The residual heatmap and the 3D surface show where either model still misses the boundary.
+
+<div my-4>
+  <ColorChromaCurve v-model:hue="themeColorsHue" />
+</div>
+
+The teal model is the one shipped as `model: 'fitted'`, the default, generated with the default "Fit to Tailwind" settings above (`pnpm generate:fitted`). The black "classic" curve is the model of earlier versions; to keep it:
+
+```ts
+presetChromatic({
+  baseHue: 220.25,
+  colors: { primary: 0 },
+  model: 'classic', // 'fitted' by default
+})
+```
 
 Do check out [Project AIRI](https://airi.moeru.ai/docs/en/). You can get to play the theme colors with the hue slider and see how the colors change in real time!
 

@@ -36,10 +36,42 @@ export default defineConfig({
 })
 ```
 
+### Color models
+
+Shades can be derived from a hue in two ways, chosen with the `model` option (`fitted` by default):
+
+- `fitted`: lightness, chroma and a small hue drift all vary smoothly with hue. They are fitted to the Tailwind CSS v4 palette, except around yellow, where the fit targets a share of the sRGB gamut so that light shades do not turn neon.
+- `classic`: each shade has a fixed OKLCH lightness, and the chroma is `0.18 + 0.04 · cos(hue)` scaled per shade. This is how every version before `fitted` worked; pass `model: 'classic'` to keep those colors.
+
+```ts
+presetChromatic({
+  baseHue: 220.25,
+  colors: { primary: 0 },
+  model: 'classic', // opt out of the default `fitted` model
+})
+```
+
+```ts
+import { chromaticColorFrom, themeFrom } from '@proj-airi/chromatic'
+
+chromaticColorFrom(220.25, { shade: 500 }).toHex() // fitted
+chromaticColorFrom(220.25, { model: 'classic', shade: 500 }).toHex()
+themeFrom(220.25, { accent: 180, primary: 0 }, { model: 'classic' })
+```
+
+With `fitted`, the preset computes lightness and chroma from `--chromatic-hue` on `:root`. If you override `--chromatic-hue` on a subtree, the hue still rotates there, but lightness and chroma stay the ones of the root. `classic` already behaves like this for chroma.
+
 ### Development
 
 ```bash
 pnpm dev
+```
+
+The playground has a "chroma lab" that visualizes both models. The `fitted` coefficients are generated from it:
+
+```bash
+pnpm generate:fitted          # regenerate packages/chromatic/src/fitted-coefficients.ts
+pnpm generate:fitted --check  # fail when the committed coefficients are out of date
 ```
 
 ### Build
