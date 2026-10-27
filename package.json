@@ -9,6 +9,7 @@
     "dev": "pnpm -F @proj-airi/chromatic-playground dev",
     "build": "pnpm -r -F=\"./packages/*\" -F=\"./playground\" run build",
     "build:packages": "pnpm -F=\"./packages/*\" run build",
+    "generate:fitted": "tsx scripts/generate-fitted-coefficients.ts",
     "test": "vitest --coverage",
     "test:run": "vitest run",
     "lint": "eslint --cache .",
