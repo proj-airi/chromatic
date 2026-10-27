@@ -1,5 +1,6 @@
 import type { Shade } from '@proj-airi/chromatic'
 
+import { calc } from '@csstools/css-calc'
 import { fittedOklch } from '@proj-airi/chromatic'
 import { createGenerator, presetWind3, presetWind4 } from 'unocss'
 import { describe, expect, it } from 'vitest'
@@ -21,8 +22,8 @@ function createUno(wind: 'wind3' | 'wind4' = 'wind3') {
 }
 
 /**
- * Evaluates the custom properties of a preflight the way a browser would, for the subset of CSS it uses:
- * `calc()`, `cos()`, `sin()`, `max()`, `var()` and plain arithmetic on numbers.
+ * Evaluates the custom properties of a preflight: `var()` references are replaced by their (already evaluated)
+ * values, and the math functions are solved by `@csstools/css-calc`, the CSS math engine of postcss-preset-env.
  */
 function evaluateCustomProperties(css: string, overrides: Record<string, number>): (name: string) => number {
   const declarations = new Map(
@@ -37,11 +38,11 @@ function evaluateCustomProperties(css: string, overrides: Record<string, number>
     if (value == null)
       throw new Error(`undefined custom property ${name}`)
 
-    const js = value
-      .replaceAll(/var\((--[\w-]+)\)/g, (_, ref: string) => `(${evaluate(ref)})`)
-      .replaceAll(/\b(calc|cos|sin|max)\(/g, (_, fn: string) => (fn === 'calc' ? '(' : `Math.${fn}(`))
-    // eslint-disable-next-line no-new-func
-    const result = Number(new Function(`return ${js}`)())
+    const substituted = value.replaceAll(/var\((--[\w-]+)\)/g, (_, ref: string) => String(evaluate(ref)))
+    const solved = calc(substituted)
+    const result = Number(solved)
+    if (!Number.isFinite(result))
+      throw new Error(`${name} did not resolve to a number: ${solved}`)
     cache.set(name, result)
     return result
   }
