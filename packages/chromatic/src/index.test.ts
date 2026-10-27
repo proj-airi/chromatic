@@ -5,7 +5,7 @@ import type { Shade } from './index'
 import { converter, formatHex, oklch } from 'culori'
 import { describe, expect, it } from 'vitest'
 
-import { chromaticColorFrom } from './index'
+import { chromaticColorFrom, chromaticPaletteFrom, colorBy, fittedOklch, themeFrom } from './index'
 
 const shadeValues: Shade[] = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]
 const shadeLightness: Record<Shade, number> = {
@@ -94,6 +94,7 @@ describe('chromaticColorFrom', () => {
           const actual = chromaticColorFrom(baseHue, {
             brightness,
             hueOffset,
+            model: 'v1',
             saturation,
             shade,
           }).toHex()
@@ -103,5 +104,75 @@ describe('chromaticColorFrom', () => {
         }
       }
     }
+  })
+})
+
+describe('v2 model', () => {
+  const toOklch = (hex: string) => oklch(hex)!
+
+  it('produces the fitted OKLCH for every shade and hue offset', () => {
+    for (const shade of shadeValues) {
+      const color = chromaticColorFrom(220.25, { hueOffset: 60, model: 'v2', shade }).color
+      const expected = fittedOklch(shade, 280.25)
+      const actual = oklch(color)!
+
+      expect(actual.l).toBeCloseTo(expected.l, 10)
+      expect(actual.c).toBeCloseTo(expected.c, 10)
+      expect(actual.h).toBeCloseTo(expected.h, 10)
+    }
+  })
+
+  it('applies brightness and saturation as ratios and ignores baseChroma', () => {
+    const fitted = fittedOklch(400, 30)
+    const color = oklch(chromaticColorFrom(30, { baseChroma: 0.01, brightness: 80, model: 'v2', saturation: 150, shade: 400 }).color)!
+
+    expect(color.l).toBeCloseTo(fitted.l * 0.8, 10)
+    expect(color.c).toBeCloseTo(fitted.c * 1.5, 10)
+  })
+
+  it('does not mix shades 50 / 100 with white', () => {
+    const fitted = fittedOklch(50, 220.25)
+    const color = oklch(chromaticColorFrom(220.25, { model: 'v2', shade: 50 }).color)!
+
+    expect(color.l).toBeCloseTo(fitted.l, 10)
+    expect(color.c).toBeCloseTo(fitted.c, 10)
+  })
+
+  it('stays within sane OKLCH ranges for every hue', () => {
+    for (let hue = 0; hue < 360; hue += 5) {
+      let previousL = Infinity
+      for (const shade of shadeValues) {
+        const { c, l } = fittedOklch(shade, hue)
+        expect(l).toBeGreaterThan(0.2)
+        expect(l).toBeLessThan(previousL)
+        expect(c).toBeGreaterThanOrEqual(0)
+        expect(c).toBeLessThan(0.33)
+        previousL = l
+      }
+    }
+  })
+
+  it('threads the model through palettes and schemes', () => {
+    const palette = chromaticPaletteFrom(220.25, undefined, { model: 'v2' })
+    expect(palette.model).toBe('v2')
+    expect(palette.chroma).toBeCloseTo(fittedOklch(500, 220.25).c, 10)
+
+    const scheme = themeFrom(220.25, { accent: 180, primary: 0 }, { model: 'v2' })
+    expect(scheme.toHex('accent', 700)).toBe(chromaticColorFrom(220.25, { hueOffset: 180, model: 'v2', shade: 700 }).toHex())
+    expect(scheme.adjustHue(30).toHex('primary', 300)).toBe(chromaticColorFrom(30, { model: 'v2', shade: 300 }).toHex())
+
+    expect(colorBy(100, 'yellow', { model: 'v2' })[400].toHex()).toBe(chromaticColorFrom(100, { model: 'v2', shade: 400 }).toHex())
+    expect(toOklch(colorBy(100, 'x', { model: 'v1' })[400].toHex()).c).not.toBeCloseTo(toOklch(colorBy(100, 'x', { model: 'v2' })[400].toHex()).c, 3)
+  })
+
+  it('is the default', () => {
+    expect(chromaticPaletteFrom(220.25).model).toBe('v2')
+    expect(chromaticColorFrom(220.25, { shade: 300 }).toHex()).toBe(chromaticColorFrom(220.25, { model: 'v2', shade: 300 }).toHex())
+    expect(themeFrom(220.25, { primary: 0 }).toHex('primary', 500)).toBe(chromaticColorFrom(220.25, { model: 'v2', shade: 500 }).toHex())
+  })
+
+  it('still offers v1 on request', () => {
+    expect(chromaticPaletteFrom(220.25, undefined, { model: 'v1' }).model).toBe('v1')
+    expect(themeFrom(220.25, { primary: 0 }, { model: 'v1' }).toHex('primary', 500)).toBe(chromaticColorFrom(220.25, { model: 'v1', shade: 500 }).toHex())
   })
 })

@@ -9,7 +9,7 @@ function createUno() {
   return createGenerator({
     presets: [
       presetWind4(),
-      presetChromatic({ baseHue: 220.44, colors: { primary: 0 } }),
+      presetChromatic({ baseHue: 220.44, colors: { primary: 0 }, model: 'v1' }),
     ],
   })
 }

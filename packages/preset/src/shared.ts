@@ -1,5 +1,7 @@
+import type { ChromaticModel, Shade as ChromaticShade, FittedBlock } from '@proj-airi/chromatic'
 import type { UtilObject, VariantObject } from '@unocss/core'
 
+import { fittedOklch, MODEL_V2 } from '@proj-airi/chromatic'
 import { definePreset, LAYER_PREFLIGHTS } from '@unocss/core'
 
 export const VAR_HUE = '--chromatic-hue'
@@ -10,6 +12,16 @@ export interface PresetChromaticOptions {
   bakeColors?: boolean
   baseHue: number
   colors: Record<string, number>
+  /**
+   * Colour model, `v2` by default: lightness, chroma and a small hue drift vary with hue (fitted to Tailwind CSS v4,
+   * see `fittedOklch` of `@proj-airi/chromatic`). `v1` restores the fixed per-shade lightness and the
+   * `0.18 + 0.04 · cos(hue)` chroma of chromatic 1.x.
+   *
+   * NOTICE: with `v2`, lightness / chroma / drift are computed from `--chromatic-hue` on `:root`. Overriding
+   * `--chromatic-hue` on a subtree still rotates the hue there, but keeps the root's lightness and chroma, which is the
+   * same as `v1` does for chroma.
+   */
+  model?: ChromaticModel
   modifierUtilityPrefixes?: string[]
   modifierVariantName?: string
 }
@@ -32,6 +44,8 @@ export const VAR_CHROMA_SHADES = {
 } as const satisfies Record<Shade, string>
 
 const DEFAULT_MODIFIER_UTILITY_PREFIXES = ['bg', 'text', 'border', 'ring', 'fill', 'stroke']
+const SHADES: ChromaticShade[] = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]
+const DEG_TO_RAD = '0.01745329252'
 const percentRE = /^\d{1,3}(?:\.\d+)?$/
 // Same placeholders as `alphaPlaceholders` of `@unocss/rule-utils`.
 const alphaPlaceholdersRE = /%alpha|<alpha-value>/g
@@ -56,6 +70,68 @@ export function createBakedColorShades(baseHue: number, hueOffset: number) {
   } as const satisfies Record<Shade, string>
 }
 
+/** Shades of the `v2` model with every value computed at build time. */
+export function createFittedBakedColorShades(baseHue: number, hueOffset: number) {
+  const shades = Object.fromEntries(SHADES.map((shade) => {
+    const { c, h, l } = fittedOklch(shade, wrapHue(baseHue + hueOffset))
+    return [shade, `oklch(${lightness(round(l * 100, 4))} ${chroma(`${round(c, 6)}`)} ${round(h, 4)} / %alpha)`]
+  })) as Record<ChromaticShade, string>
+
+  return { ...shades, DEFAULT: shades[500] } satisfies Record<Shade, string>
+}
+
+/**
+ * Custom properties of the `v2` model. Per colour: the Fourier basis `-b-cos<k>` / `-b-sin<k>` of its hue, the
+ * shared hue curves of the blocks that have them (`-f<k>`), then lightness (`-l-<shade>`, 0–1), chroma
+ * (`-c-<shade>`) and hue drift in degrees (`-hd-<shade>`) for each shade.
+ */
+export function createFittedPreflight(baseHue: number, colors: Record<string, number>): string {
+  const lines = [
+    `${VAR_HUE}: ${baseHue};`,
+    `${VAR_BRIGHTNESS}: 1;`,
+    `${VAR_SATURATION}: 1;`,
+  ]
+
+  const blocks = [MODEL_V2.lightness, MODEL_V2.chroma, MODEL_V2.hueDrift].filter(block => block != null)
+  const harmonics = Math.max(...blocks.flatMap(block => block.curves.map(curve => harmonicsOf(curve, block.curvesHaveConst))))
+
+  for (const [name, hueOffset] of Object.entries(colors)) {
+    // cos(k·h) / sin(k·h) once per colour; every fitted value is a weighted sum of these.
+    const basis = fittedVar(name, 'b')
+    const angle = `(var(${VAR_HUE}) + ${hueOffset}) * ${DEG_TO_RAD}`
+    for (let k = 1; k <= harmonics; k++) {
+      const theta = k === 1 ? angle : `${k} * ${angle}`
+      lines.push(`${basis}-cos${k}: cos(${theta});`, `${basis}-sin${k}: sin(${theta});`)
+    }
+
+    lines.push(...fittedBlockDeclarations(fittedVar(name, 'l'), MODEL_V2.lightness, basis, expr => expr))
+    lines.push(...fittedBlockDeclarations(fittedVar(name, 'c'), MODEL_V2.chroma, basis, expr => `max(0, ${expr})`))
+    if (MODEL_V2.hueDrift)
+      lines.push(...fittedBlockDeclarations(fittedVar(name, 'hd'), MODEL_V2.hueDrift, basis, expr => expr))
+  }
+
+  return `
+:root {
+${lines.map(line => `  ${line}`).join('\n')}
+}
+`
+}
+
+/** Shades of the `v2` model reading the custom properties of {@link createFittedPreflight}. */
+export function createFittedVarBasedColorShades(name: string, hueOffset: number) {
+  const shades = Object.fromEntries(SHADES.map((shade) => {
+    const l = `var(${fittedVar(name, 'l')}-${shade})`
+    const c = `var(${fittedVar(name, 'c')}-${shade})`
+    const drift = MODEL_V2.hueDrift ? ` + var(${fittedVar(name, 'hd')}-${shade})` : ''
+    return [
+      shade,
+      `oklch(clamp(0%, calc(${l} * 100% * var(${VAR_BRIGHTNESS})), 100%) ${chroma(c)} calc(var(${VAR_HUE}) + ${hueOffset}${drift}) / %alpha)`,
+    ]
+  })) as Record<ChromaticShade, string>
+
+  return { ...shades, DEFAULT: shades[500] } satisfies Record<Shade, string>
+}
+
 export function createPresetChromatic(calledFromExtension = false) {
   return definePreset<PresetChromaticOptions>((options) => {
     return {
@@ -65,6 +141,9 @@ export function createPresetChromatic(calledFromExtension = false) {
         preflights: [
           {
             getCSS() {
+              if ((options.model ?? 'v2') === 'v2')
+                return createFittedPreflight(options.baseHue, options.colors)
+
               return `
 :root {
   ${VAR_HUE}: ${options.baseHue};
@@ -92,9 +171,17 @@ export function createPresetChromatic(calledFromExtension = false) {
           colors: Object
             .entries(options.colors)
             .reduce((colors, [key, hueOffset]) => {
-              colors[key] = (options.bakeColors || calledFromExtension)
-                ? createBakedColorShades(options.baseHue, hueOffset)
-                : createVarBasedColorShades(hueOffset)
+              const bake = options.bakeColors || calledFromExtension
+              if ((options.model ?? 'v2') === 'v2') {
+                colors[key] = bake
+                  ? createFittedBakedColorShades(options.baseHue, hueOffset)
+                  : createFittedVarBasedColorShades(key, hueOffset)
+              }
+              else {
+                colors[key] = bake
+                  ? createBakedColorShades(options.baseHue, hueOffset)
+                  : createVarBasedColorShades(hueOffset)
+              }
 
               return colors
             }, {} as Record<string, Record<Shade, string>>),
@@ -147,6 +234,63 @@ function escapeRegExp(raw: string): string {
   return raw.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+/**
+ * `<prefix>-f<k>` for each shared curve and `<prefix>-<shade>` combining them, mirroring `evaluateFittedBlock`.
+ */
+function fittedBlockDeclarations(prefix: string, block: FittedBlock, basis: string, wrap: (expr: string) => string): string[] {
+  // One curve per shade with identity weights: write each shade's series directly, no intermediate curve properties.
+  if (isPerShadeBlock(block))
+    return SHADES.map((shade, s) => `${prefix}-${shade}: ${wrap(`calc(${fourierCSS(block.curves[s], basis, true)})`)};`)
+
+  const lines = block.curves.map((curve, k) => `${prefix}-f${k + 1}: calc(${fourierCSS(curve, basis, block.curvesHaveConst)});`)
+
+  SHADES.forEach((shade, s) => {
+    const terms = block.curves
+      .map((_, k) => block.weights[s][k])
+      .map((weight, k) => (weight === 0 ? '' : `${weight} * var(${prefix}-f${k + 1})`))
+      .filter(Boolean)
+    if (block.intercepts[s] !== 0 || !terms.length)
+      terms.unshift(`${block.intercepts[s]}`)
+    lines.push(`${prefix}-${shade}: ${wrap(`calc(${terms.join(' + ')})`)};`)
+  })
+
+  return lines
+}
+
+/** `--chromatic-fit-<name>-<quantity>`, with characters that are not valid in a custom property name replaced. */
+function fittedVar(name: string, quantity: 'b' | 'c' | 'hd' | 'l'): string {
+  return `--chromatic-fit-${name.replaceAll(/[^\w-]/g, '-')}-${quantity}`
+}
+
+/** CSS for `[const?] + a1·cos(θ) + b1·sin(θ) + a2·cos(2θ) + …` with θ given as a radian expression. */
+function fourierCSS(coeffs: number[], basis: string, withConst: boolean): string {
+  const terms: string[] = []
+  let i = 0
+  if (withConst)
+    terms.push(`${coeffs[i++]}`)
+  for (let k = 1; i < coeffs.length; k++) {
+    const a = coeffs[i++]
+    const b = coeffs[i++]
+    if (a !== 0)
+      terms.push(`${a} * var(${basis}-cos${k})`)
+    if (b !== 0)
+      terms.push(`${b} * var(${basis}-sin${k})`)
+  }
+  return terms.length ? terms.join(' + ') : '0'
+}
+
+/** Number of harmonics in a Fourier coefficient list `[const?, a1, b1, a2, b2, …]`. */
+function harmonicsOf(coeffs: number[], withConst: boolean): number {
+  return (coeffs.length - (withConst ? 1 : 0)) / 2
+}
+
+function isPerShadeBlock(block: FittedBlock): boolean {
+  return block.curvesHaveConst
+    && block.curves.length === SHADES.length
+    && block.intercepts.every(v => v === 0)
+    && block.weights.every((row, s) => row.every((w, k) => w === (k === s ? 1 : 0)))
+}
+
 function lightness(level: number): string {
   return `clamp(0%, calc(${level}% * var(${VAR_BRIGHTNESS})), 100%)`
 }
@@ -171,6 +315,10 @@ function resolveLeftoverAlphaPlaceholders(util: UtilObject): void {
     if (typeof entry[1] === 'string')
       entry[1] = entry[1].replaceAll(alphaPlaceholdersRE, '1')
   }
+}
+
+function round(value: number, digits: number): number {
+  return Number(value.toFixed(digits))
 }
 
 function toRatio(raw: string): string {
@@ -240,4 +388,8 @@ function variantChromaticAdjustments(
     },
     name,
   }
+}
+
+function wrapHue(hue: number): number {
+  return ((hue % 360) + 360) % 360
 }
