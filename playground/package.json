@@ -13,7 +13,8 @@
     "culori": "catalog:",
     "reka-ui": "catalog:",
     "three": "catalog:",
-    "vue": "catalog:"
+    "vue": "catalog:",
+    "vue-router": "catalog:"
   },
   "devDependencies": {
     "@iconify-json/simple-icons": "catalog:",
