@@ -1,8 +1,8 @@
 import type { ChromaticModel, Shade as ChromaticShade, FittedBlock } from '@proj-airi/chromatic'
-import type { UtilObject, VariantObject } from '@unocss/core'
+import type { SourceCodeTransformer, UtilObject, VariantObject } from '@unocss/core'
 
 import { fittedOklch, MODEL_V2 } from '@proj-airi/chromatic'
-import { definePreset, LAYER_PREFLIGHTS } from '@unocss/core'
+import { cssIdRE, definePreset, LAYER_PREFLIGHTS } from '@unocss/core'
 
 export const VAR_HUE = '--chromatic-hue'
 export const VAR_BRIGHTNESS = '--chromatic-bri'
@@ -186,6 +186,7 @@ export function createPresetChromatic(calledFromExtension = false) {
               return colors
             }, {} as Record<string, Record<Shade, string>>),
         },
+        transformers: [createThemeFunctionAlphaTransformer(Object.keys(options.colors))],
         variants: [
           variantChromaticAdjustments(
             options.modifierUtilityPrefixes,
@@ -195,6 +196,42 @@ export function createPresetChromatic(calledFromExtension = false) {
       },
     }
   })
+}
+
+/**
+ * Gives `theme('colors.<chromatic colour>…')` calls without an opacity an explicit `/ 1`, so they resolve to a valid
+ * colour.
+ *
+ * NOTICE:
+ * Our theme colours carry an alpha placeholder (`/ %alpha`), which opacity utilities like `bg-primary-500/50` need.
+ * `transformThemeString` of `@unocss/rule-utils` (66.7.5, used by `@unocss/transformer-directives` for `theme()`)
+ * only resolves that placeholder when the call has an opacity (`theme('colors.primary.400 / 50%')`); without one it
+ * returns the raw string, leaving `%alpha` in the CSS, so browsers drop the declaration. `postprocess` cannot fix it,
+ * because `theme()` is expanded in the CSS source by the directives transformer, not by the generator.
+ * This transformer runs in the `pre` pass, before the directives transformer (default pass), and only rewrites calls
+ * that name a colour of this preset and have no opacity; `1` is the value UnoCSS uses for an omitted opacity
+ * elsewhere (`colorToString`).
+ * Remove when `transformThemeString` resolves alpha placeholders without an explicit opacity itself.
+ */
+export function createThemeFunctionAlphaTransformer(colorNames: string[]): SourceCodeTransformer {
+  const names = new Set(colorNames)
+  // theme('colors.<name>[.<shade>]') with no `/ <opacity>`; the key path cannot contain quotes, spaces or `/`.
+  const themeColorRE = /theme\(\s*(['"])colors\.([\w-]+)(?:\.[\w-]+)?\1/g
+
+  return {
+    codeFilter: code => code.includes('theme('),
+    enforce: 'pre',
+    idFilter: id => cssIdRE.test(id),
+    name: '@proj-airi/unocss-preset-chromatic:theme-alpha',
+    transform(code) {
+      for (const match of code.original.matchAll(themeColorRE)) {
+        if (!names.has(match[2]))
+          continue
+        // before the closing quote
+        code.appendLeft(match.index + match[0].length - 1, ' /1')
+      }
+    },
+  }
 }
 
 export function createVarBasedColorShades(hueOffset: number) {
