@@ -1,7 +1,7 @@
 {
   "name": "@proj-airi/chromatic-root",
   "type": "module",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "packageManager": "pnpm@10.34.5",
   "scripts": {
