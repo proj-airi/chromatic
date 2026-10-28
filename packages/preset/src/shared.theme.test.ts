@@ -9,8 +9,10 @@ import { createPresetChromatic } from './shared'
 
 // magic-string is what UnoCSS hands transformers; load the copy unocss itself uses.
 const require = createRequire(import.meta.url)
+// Typed through @unocss/core, so the test does not depend on magic-string's types being resolvable from here.
+type TransformerCode = Parameters<SourceCodeTransformer['transform']>[0]
 const magicString = createRequire(require.resolve('unocss'))('magic-string')
-const MagicString = (magicString.default ?? magicString) as typeof import('magic-string').default
+const MagicString = (magicString.default ?? magicString) as new (code: string) => TransformerCode
 
 const presetChromatic = createPresetChromatic()
 
