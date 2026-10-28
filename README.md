@@ -61,6 +61,8 @@ themeFrom(220.25, { accent: 180, primary: 0 }, { model: 'v1' })
 
 With `v2`, the preset computes lightness and chroma from `--chromatic-hue` on `:root`. If you override `--chromatic-hue` on a subtree, the hue still rotates there, but lightness and chroma stay the ones of the root. `v1` already behaves like this for chroma.
 
+To use the colors in your own CSS, `--at-apply` / `@apply` and `theme()` of `transformerDirectives` both work, e.g. `background: theme('colors.primary.400')` or `theme('colors.primary.400 / 50%')`. The preset adds an explicit opacity to `theme()` calls of its colors that have none, so they do not leave the opacity placeholder behind.
+
 ### Development
 
 ```bash
